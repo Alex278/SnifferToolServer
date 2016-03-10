@@ -53,9 +53,9 @@ public:
     void setHostInfo(const char *devName);
     // 获取本机信息：ip 、 掩码 、 Mac
     HostInfo getHostInfo();
-    //向局域网内所有主机广播ARP请求包
+    // 向局域网内所有主机广播ARP请求包
     void sendArpPacket();
-    //
+
 private:
     pcap_t * handle;
     HostInfo hostInfo;

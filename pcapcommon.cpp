@@ -175,8 +175,6 @@ void PcapCommon::setHostInfo(const char *devName)
 {
     pcap_if_t *alldevs;
     pcap_if_t *p;
-    char ipstr[16] = "";
-    char netmaskstr[16] = "";
 
     char errbuf[PCAP_ERRBUF_SIZE] = {0};
 
@@ -244,10 +242,11 @@ void PcapCommon::sendArpPacket()
     unsigned long myip = my_inet_addr(ip);
     unsigned long mynetmask = my_inet_addr(netmask);
     unsigned long hisip = my_htonl((myip & mynetmask));
+
     printf("Host ip Num: %ld\n",hisip);
     // 向N个主机发送
     char ipStr[4] = {0};
-    for(int i = 0; i < hisip; i++){
+    for(unsigned int i = 0; i < hisip; i++){
         ah.DestIpAdd = my_htonl(hisip + i);
         printf("send ip: %s \n",iptos(ah.DestIpAdd,ipStr));
         // 构造一个ARP请求

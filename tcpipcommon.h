@@ -20,7 +20,18 @@ typedef unsigned long       u_long;
 #define ARP_REPLY           2
 
 
-//**************常用网路自定义结构体*********************//
+//***********************************************************************************
+//常用网络协议自定义结构体
+//***********************************************************************************
+// Ethernet addresses are 6 bytes
+#define ETHER_ADDR_LEN 6
+typedef struct _EthernetHeader
+{
+    u_char DestMAC[ETHER_ADDR_LEN];          //目的MAC地址 6字节
+    u_char SourMAC[ETHER_ADDR_LEN];          //源MAC地址 6字节
+    u_short EthType;                         //上一层协议类型，如0x0800代表上一层是IP协议，0x0806为arp  2字节
+}EthernetHeader;
+
 // 4 bytes IP address
 typedef struct _IPAddress{
     u_char byte1;
@@ -29,20 +40,32 @@ typedef struct _IPAddress{
     u_char byte4;
 }IPAddress;
 
-// IPv4 header
+// IPv4 header 20bytes
 typedef struct _IpHeader{
-    u_char	ver_ihl;		// Version (4 bits) + Internet header length (4 bits)
-    u_char	tos;			// Type of service
-    u_short tlen;			// Total length
-    u_short identification; // Identification
-    u_short flags_fo;		// Flags (3 bits) + Fragment offset (13 bits)
-    u_char	ttl;			// Time to live
-    u_char	proto;			// Protocol
-    u_short crc;			// Header checksum
-    IPAddress	saddr;		// Source address
-    IPAddress	daddr;		// Destination address
-    u_int	op_pad;			// Option + Padding
+    u_char	ver_ihl;		// 版本4 + 首部长度4Version (4 bits) + Internet header length (4 bits)
+    u_char	tos;			// 服务类型Type of service
+    u_short tlen;			// 总长度Total length
+    u_short identification; // 标识Identification
+    u_short flags_fo;		// 标志4+片偏移12Flags (3 bits) + Fragment offset (13 bits)
+    u_char	ttl;			// 生存时间Time to live
+    u_char	proto;			// 协议Protocol
+    u_short crc;			// 首部校验和Header checksum
+    IPAddress	saddr;		// 源地址Source address
+    IPAddress	daddr;		// 目标地址Destination address
+    u_int	op_pad;			// 可变部分：可选字段(长度可变)28+填充部分4Option + Padding
 }IPHeader;
+
+// TCP数据包的头部 20 bytes
+typedef struct _TCPPacketHeader {
+    u_short	srcPort;		//源端口
+    u_short	destPort;		//目的端口
+    u_int	seq;			//序列号
+    u_int	ack;			//确认序列号
+    u_short	lenres;			//数据偏移4+保留区6+URG+ACK+PSH+RST+SYN+FIN
+    u_short	win;			//窗口
+    u_short	sum;			//校验和
+    u_short	urp;			//紧急指针
+}TCPPacketHeader;
 
 // UDP header
 typedef struct _UDPHeader{
@@ -52,14 +75,6 @@ typedef struct _UDPHeader{
     u_short crc;			// Checksum
 }UDPHeader;
 
-// Ethernet addresses are 6 bytes
-#define ETHER_ADDR_LEN 6
-typedef struct _EthernetHeader
-{
-    u_char DestMAC[ETHER_ADDR_LEN];          //目的MAC地址 6字节
-    u_char SourMAC[ETHER_ADDR_LEN];          //源MAC地址 6字节
-    u_short EthType;                         //上一层协议类型，如0x0800代表上一层是IP协议，0x0806为arp  2字节
-}EthernetHeader;
 
 // 28 bytes ARP request/reply
 typedef struct _ArpHeader {
@@ -81,7 +96,9 @@ typedef struct _ArpPacket {
 }ArpPacket;
 
 
-//**************常用网路自定义转换函数*******************//
+//***********************************************************************************
+//网络常用转换函数声明和说明
+//***********************************************************************************
 //my_htonl函数，本机字节序转网络字节序(32位字节序)
 //my_ntohl函数，网络字节序转本机字节序(32位字节序)
 //my_htons函数，本机字节序转网络字节序(16位字节序)
@@ -90,11 +107,33 @@ typedef struct _ArpPacket {
 //iptos   函数，将字节序ip地址转为点分十进制的字符串地址,并获取
 //my_inet_addr
 
+// 本机大端返回1，小端返回0
 inline int checkCPUendian();
-inline u_long my_inet_addr(const char *ptr);
-inline char *my_iptos(u_long in);
-inline u_long my_ntohl(u_long n);
+
+// 模拟htonl函数，本机字节序转网络字节序
 inline u_long my_htonl(u_long h);
+// 模拟ntohl函数，网络字节序转本机字节序
+inline u_long my_ntohl(u_long n);
+
+// 模拟htons函数，本机字节序转网络字节序
+inline u_short my_htons(u_short h);
+
+// 模拟ntohs函数，网络字节序转本机字节序
+inline u_short my_ntohs(u_short n);
+
+// 数字类型的IP地址转换成点分十进制字符串类型的
+inline char *iptos(u_long in,char * ipStr);
+
+// 将字节序ip地址转为点分十进制的字符串地址,并获取
+inline char *my_iptos(u_long in);
+
+// 将点分十进制的字符串地址转网络字节整形
+inline u_long my_inet_addr(const char *ptr);
+
+
+//***********************************************************************************
+//网络常用转换函数和宏集
+//***********************************************************************************
 
 // 短整型大小端互换
 #define BigLittleSwap16(A)  ((((u_short)(A) & 0xff00) >> 8) | \
@@ -104,8 +143,6 @@ inline u_long my_htonl(u_long h);
                             (((u_long)(A) & 0x00ff0000) >> 8) | \
                             (((u_long)(A) & 0x0000ff00) << 8) | \
                             (((u_long)(A) & 0x000000ff) << 24))
-
-
 
 // 本机大端返回1，小端返回0
 int checkCPUendian()
@@ -136,7 +173,7 @@ u_long my_ntohl(u_long n)
 }
 
 // 模拟htons函数，本机字节序转网络字节序
-inline u_short my_htons(u_short h)
+u_short my_htons(u_short h)
 {
     // 若本机为大端，与网络字节序同，直接返回
     // 若本机为小端，转换成大端再返回
@@ -144,7 +181,7 @@ inline u_short my_htons(u_short h)
 }
 
 // 模拟ntohs函数，网络字节序转本机字节序
-inline u_short my_ntohs(u_short n)
+u_short my_ntohs(u_short n)
 {
     // 若本机为大端，与网络字节序同，直接返回
     // 若本机为小端，网络数据转换成小端再返回
@@ -152,7 +189,7 @@ inline u_short my_ntohs(u_short n)
 }
 
 // 数字类型的IP地址转换成点分十进制字符串类型的
-inline char *iptos(u_long in,char * ipStr)
+char *iptos(u_long in,char * ipStr)
 {
     u_char *p;
     p = (u_char *)&in;
@@ -161,7 +198,7 @@ inline char *iptos(u_long in,char * ipStr)
 }
 
 #define IPTOSBUFFERS    12
-inline char *my_iptos(u_long in)
+char *my_iptos(u_long in)
 {
     static char output[IPTOSBUFFERS][3*4+3+1];
     static short which;

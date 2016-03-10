@@ -8,6 +8,12 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
+    unsigned long myip = my_inet_addr("10.10.1.100");
+    unsigned long mynetmask = my_inet_addr("255.255.240.0");
+    unsigned long hisip = my_htonl((myip & mynetmask));
+
+    printf("Host ip Num: %ld\n",hisip);
+
     Widget w;
     w.show();
 

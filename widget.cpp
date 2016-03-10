@@ -103,8 +103,7 @@ void Widget::mouseAndWinInit()
 //鼠标按下事件
 void Widget::mousePressEvent(QMouseEvent *event)
 {
-    if(event->button()==Qt::LeftButton)
-    {
+    if(event->button()==Qt::LeftButton){
         this->isLeftPressed=true;
         QPoint temp=event->globalPos();
         pLast=temp;
@@ -126,8 +125,7 @@ void Widget::mouseReleaseEvent(QMouseEvent *event)
 //鼠标双击事件
 void Widget::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    if(event->button()==Qt::LeftButton)
-    {
+    if(event->button()==Qt::LeftButton){
         if(windowState()!=Qt::WindowFullScreen)
             //双击窗口全屏
             setWindowState(Qt::WindowFullScreen);
@@ -143,22 +141,18 @@ void Widget::mouseMoveEvent(QMouseEvent *event)
     int poss = countFlag(event->pos(),countRow(event->pos()));
 
     setCursorType(poss);
-    if(isLeftPressed)
-    {
+    if(isLeftPressed){
         QPoint ptemp=event->globalPos();
         ptemp=ptemp-pLast;
         //移动窗口
-        if(curPos == 22)
-        {
+        if(curPos == 22){
             ptemp=ptemp+pos();
             move(ptemp);
         }
-        else
-        {
+        else{
             QRect wid=geometry();
 
-            switch(curPos)
-            {
+            switch(curPos){
                 case 11:wid.setTopLeft(wid.topLeft()+ptemp);break;          //左上角
                 case 13:wid.setTopRight(wid.topRight()+ptemp);break;        //右上角
                 case 31:wid.setBottomLeft(wid.bottomLeft()+ptemp);break;    //左下角
@@ -191,8 +185,7 @@ int Widget::countFlag(QPoint p,int row)
 void Widget::setCursorType(int flag)
 {
     Qt::CursorShape cursor = Qt::ArrowCursor;
-    switch(flag)
-    {
+    switch(flag){
         case 11:
         case 33:
         cursor = Qt::SizeFDiagCursor;break;
