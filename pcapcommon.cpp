@@ -3,10 +3,19 @@
 //#include <winsock.h>
 #include <QDebug>
 
+
 PcapCommon::PcapCommon()
 {
     handle = NULL;
 }
+
+PcapCommon::~PcapCommon()
+{
+    pcap_freealldevs(alldevs);
+    if(handle != NULL)pcap_close(handle);
+}
+
+
 
 // 扫描本机所有的适配器，并获取每个适配器的信息
 QVector<DEVInfo> PcapCommon::findAllDev()
@@ -14,7 +23,6 @@ QVector<DEVInfo> PcapCommon::findAllDev()
     QVector<DEVInfo> allDev;
     DEVInfo tempDevInfo;
 
-    pcap_if_t *alldevs;
     pcap_if_t *p;
 
     char errbuf[PCAP_ERRBUF_SIZE];
@@ -64,7 +72,6 @@ QVector<DEVInfo> PcapCommon::findAllDev()
         allDev.append(tempDevInfo);        
     }
 
-    pcap_freealldevs(alldevs);
     return allDev;
 }
 
@@ -88,10 +95,43 @@ pcap_t *& PcapCommon::getCurrentHandle()
     return handle;
 }
 
-// 获取本机Mac
-QString PcapCommon::getSelfMac(pcap_t *adhandle,const char *ipAddr) {
+// 通过适配器名获取相应IP
+QString PcapCommon::getHostIpByDevName(QString dev)
+{
+    pcap_if_t *p = alldevs;
+
+    for(; p ; p = p->next){
+        QString sname = p->name;
+        if(dev == sname){
+            pcap_addr_t *a;
+            for(a = p->addresses; a ; a = a->next) {
+                switch (a->addr->sa_family) {
+                case AF_INET:
+                    if (a->addr) {
+                        char *ipstr;
+                        char ipAddr[16] = {0};
+                        //将地址转化为字符串
+                        ipstr = my_iptos(((struct sockaddr_in *) a->addr)->sin_addr.s_addr);
+                        memcpy(ipAddr, ipstr, 16);
+                        return QString(ipAddr);
+                    }
+                    break;
+                case AF_INET6:
+                    continue;
+                    break;
+                }
+            }
+        }
+    }
+    return QString("0.0.0.0");
+}
+
+QString PcapCommon::getSelfMac(void)
+{
+    unsigned char mac[6] = {0};
     unsigned char sendbuf[42] = {0};
     int res;
+    const char * hostIp = "10.10.1.100";
     EthernetHeader eh;
     ArpHeader ah;
     struct pcap_pkthdr * pktHeader;
@@ -113,11 +153,11 @@ QString PcapCommon::getSelfMac(pcap_t *adhandle,const char *ipAddr) {
     ah.HardwareAddLen = 6;
     ah.ProtocolAddLen = 4;
     ah.OperationField = my_htons(ARP_REQUEST);
-    ah.DestIpAdd = my_inet_addr(ipAddr);
+    ah.DestIpAdd = my_inet_addr(hostIp);
     memset(sendbuf, 0, sizeof(sendbuf));
     memcpy(sendbuf, &eh, sizeof(eh));
     memcpy(sendbuf + sizeof(eh), &ah, sizeof(ah));
-    if(pcap_sendpacket(adhandle, sendbuf, 42) == 0) {
+    if(pcap_sendpacket(handle, sendbuf, 42) == 0) {
     }
     else{
         printf("PacketSendPacket in getmine Error:\n");
@@ -131,7 +171,7 @@ QString PcapCommon::getSelfMac(pcap_t *adhandle,const char *ipAddr) {
 
     char ipStr[3*4+3+1] = {0};
 
-    while((res = pcap_next_ex(adhandle, &pktHeader, &pktData)) >= 0){
+    while((res = pcap_next_ex(handle, &pktHeader, &pktData)) >= 0){
         if (*(unsigned short *) (pktData + 12) == my_htons(ARP_TYPE)
                 && *(unsigned short*) (pktData + 20) == my_htons(ARP_REPLY)){
             //获取Source ip
@@ -140,9 +180,9 @@ QString PcapCommon::getSelfMac(pcap_t *adhandle,const char *ipAddr) {
             }
             iptos(ipUnion.ip,ipStr);
             //收到的arp包的源ip等于本机ip,则获取本机Mac（源Mac）
-            if(strncmp(ipAddr,ipStr,strlen(ipAddr)) == 0){
+            if(strncmp(hostIp,ipStr,strlen(hostIp)) == 0){
                 for(int i = 0; i < 6; i++) {
-                    hostInfo.mac[i] = *(unsigned char *) (pktData + 22 + i);
+                    mac[i] = *(unsigned char *) (pktData + 22 + i);
                 }
                 break;
             }
@@ -152,22 +192,34 @@ QString PcapCommon::getSelfMac(pcap_t *adhandle,const char *ipAddr) {
             }
             iptos(ipUnion.ip,ipStr);
             //收到的arp包的源ip等于本机ip,则获取本机Mac（源Mac）
-            if(strncmp(ipAddr,ipStr,strlen(ipAddr)) == 0){
+            if(strncmp(hostIp,ipStr,strlen(hostIp)) == 0){
                 for (int i = 0; i < 6; i++) {
-                    hostInfo.mac[i] = *(unsigned char *) (pktData + 32 + i);
+                    mac[i] = *(unsigned char *) (pktData + 32 + i);
                 }
                 break;
             }
         }
         else{
-
+            qDebug() << "Not Reply Packet";
         }
     }
 
     char macStr[256] = {0};
-    sprintf(macStr,"%02x-%02x-%02x-%02x-%02x-%02x",hostInfo.mac[0],hostInfo.mac[1],hostInfo.mac[2],hostInfo.mac[3], hostInfo.mac[4], hostInfo.mac[5]);
+    sprintf(macStr,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
+    printf("thread get mac: %s\n ",macStr);
 
     return QString(macStr);
+}
+
+
+// 获取本机Mac
+void PcapCommon::getSelfMac(const char *devname,const char *ipAddr)
+{    
+    GetMacThread * getHostMacThread = new GetMacThread(devname,ipAddr);
+
+    connect(getHostMacThread,SIGNAL(getSelfMacFinishedSig(QString)),this,SLOT(getSelfMacFinishedSlot(QString)));
+
+    getHostMacThread->start();
 }
 
 // 获取本机信息：ip 、 掩码 、 Mac
@@ -183,8 +235,10 @@ void PcapCommon::setHostInfo(const char *devName)
         exit(1);
     }
 
+    QString dev = QString(devName);
     for(p = alldevs ; p ; p = p->next){
-        if(strcmp(p->name,devName) == 0){
+        QString sname = p->name;
+        if(dev == sname){
             pcap_addr_t *a;
             for(a = p->addresses ; a ; a = a->next) {
                 switch (a->addr->sa_family) {
@@ -200,6 +254,7 @@ void PcapCommon::setHostInfo(const char *devName)
                         memcpy(hostInfo.netmask, netmaskstr, 16);
                     }
                 case AF_INET6:
+                    continue;
                     break;
                 }
             }
@@ -213,7 +268,33 @@ HostInfo PcapCommon::getHostInfo()
     return hostInfo;
 }
 
+// 获取Host IP
+QString PcapCommon::getHostIp()
+{
+    if(strlen(hostInfo.ip) <= 0)
+        return QString("0.0.0.0");
+    return QString(hostInfo.ip);
+}
+
+// 获取Host Mac
+QString PcapCommon::getHostMac()
+{
+    char macStr[256] = {0};
+    sprintf(macStr,"%02x-%02x-%02x-%02x-%02x-%02x",hostInfo.mac[0],hostInfo.mac[1],hostInfo.mac[2],hostInfo.mac[3], hostInfo.mac[4], hostInfo.mac[5]);
+
+    return QString(macStr);
+}
+
+// 获取子网掩码
+QString PcapCommon::getHostNetmask()
+{
+    if(strlen(hostInfo.netmask) <= 0)
+        return QString("255.255.255.255");
+    return QString(hostInfo.netmask);
+}
+
 // 向局域网内所有主机广播ARP请求包
+/*
 void PcapCommon::sendArpPacket()
 {
     pcap_t *adhandle = handle;
@@ -263,6 +344,12 @@ void PcapCommon::sendArpPacket()
         QThread::usleep(100000);
     }
 }
+*/
 
 
 
+void PcapCommon::getSelfMacFinishedSlot(QString mac)
+{
+    printf("PcapCommon getSelfMacFinishedSlot \n");
+    emit getSelfMacFinishedSig(mac);
+}
