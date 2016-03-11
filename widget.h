@@ -2,6 +2,8 @@
 #define WIDGET_H
 
 #include <QWidget>
+#include <QObject>
+#include "pcapcommon.h"
 
 // 鼠标相关
 #define MARGIN 5
@@ -19,6 +21,11 @@ public:
     explicit Widget(QWidget *parent = 0);
     ~Widget();
 
+// Pcap相关
+private:
+    PcapCommon *pcap;
+
+// Widget相关
 private:
     Ui::Widget *ui;
 
@@ -27,6 +34,8 @@ private:
     void tabWidgetPanelInit();
 // TabView初始化
     void tabViewInit();
+// ComboboxAdapter初始化
+    void comboboxAdapterInit();
 
 // 鼠标和窗口相关
 private:
@@ -47,7 +56,13 @@ private slots:
     void on_maxButton_clicked();
     void on_closeButton_clicked();
 
-    void on_adapterComboBox_currentIndexChanged(const QString &arg1);
+    void on_ComboBoxAdapter_currentIndexChanged(const QString &arg1);
+    void on_pushButtonOpenAdapter_clicked();
+
+public slots:
+    // 获取本机Mac地址完成槽函数处理
+    void getSelfMacFinishedSlot(QString mac);
+
 };
 
 #endif // WIDGET_H

@@ -13,6 +13,12 @@ Widget::Widget(QWidget *parent) :
     mouseAndWinInit();
     tabWidgetPanelInit();
     tabViewInit();
+
+    pcap = new PcapCommon();
+
+    connect(pcap,SIGNAL(getSelfMacFinishedSig(QString)),this,SLOT(getSelfMacFinishedSlot(QString)));
+
+    comboboxAdapterInit();
 }
 
 Widget::~Widget()
@@ -65,6 +71,20 @@ void Widget::tabViewInit()
     ui->tableWidget->setMouseTracking(true);
 }
 
+// combobox adapter 初始化
+void Widget::comboboxAdapterInit()
+{
+    QVector<DEVInfo> devInfo(pcap->findAllDev());
+    while(ui->ComboBoxAdapter->count() > 0){
+        ui->ComboBoxAdapter->removeItem(0);
+    }
+
+    for(int i = 0; i < devInfo.length(); ++i){
+        QPixmap icon  = style()->standardPixmap(QStyle::SP_DriveNetIcon);
+        ui->ComboBoxAdapter->addItem(icon,devInfo.at(i).name);
+    }
+}
+
 //-----------------------------------------------------------
 //鼠标和窗口的初始化
 //-----------------------------------------------------------
@@ -77,7 +97,7 @@ void Widget::mouseAndWinInit()
     QPixmap setPix = style()->standardPixmap(QStyle::SP_TitleBarUnshadeButton);
 
     //设置最小化、关闭按钮图标
-    ui->minButton->setIcon(minPix);
+    ui->minButton->setIcon(minPix);    
     ui->maxButton->setIcon(maxPix);
     ui->closeButton->setIcon(closePix);
     ui->setButton->setIcon(setPix);
@@ -238,9 +258,37 @@ void Widget::on_closeButton_clicked()
 //-----------------------------------------------------------
 //其他槽函数
 //-----------------------------------------------------------
-void Widget::on_adapterComboBox_currentIndexChanged(const QString &arg1)
+void Widget::on_ComboBoxAdapter_currentIndexChanged(const QString &arg1)
 {
-    qDebug()<< arg1;
+    //qDebug()<< arg1;
+    //ui->ComboBoxAdapter->setEnabled(false);
+}
 
-    ui->adapterComboBox->setEnabled(false);
+void Widget::on_pushButtonOpenAdapter_clicked()
+{
+    ui->pushButtonOpenAdapter->setEnabled(false);
+    ui->labelStatus->setText(tr("获取本机网络信息中"));
+    QString devStr = ui->ComboBoxAdapter->currentText();    
+
+    QByteArray devByteArray = devStr.toUtf8();
+    const char *devName = devByteArray.data();
+    // 打开适配器
+    pcap->openLiveDev(devName);
+    // 获取本机ip和netmask
+    pcap->setHostInfo(devName);
+    QString ipStr = pcap->getHostIpByDevName(devStr);    
+
+    QByteArray ipByteArray = ipStr.toUtf8();
+    const char * hostIp = ipByteArray.data();
+    // 线程获取本机MAC
+    pcap->getSelfMac(devName,hostIp);
+}
+
+void Widget::getSelfMacFinishedSlot(QString mac)
+{
+    ui->pushButtonOpenAdapter->setEnabled(true);
+    ui->labelStatus->setText(tr("获取本机信息完毕"));
+    ui->labelHostIP->setText(pcap->getHostIp());
+    ui->labelHostNetmask->setText(pcap->getHostNetmask());
+    ui->labelHostMac->setText(mac);
 }
