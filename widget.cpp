@@ -13,6 +13,7 @@ Widget::Widget(QWidget *parent) :
     mouseAndWinInit();
     tabWidgetPanelInit();
     tabViewInit();
+    ui->pushButtonStartScan->setEnabled(false);
 
     pcap = new PcapCommon();
 
@@ -68,7 +69,7 @@ void Widget::tabViewInit()
     //ui->tableWidget->horizontalHeader()->resizeSection(2,160);
     //ui->tableWidget->horizontalHeader()->resizeSection(3,160);
     ui->tableWidget->setItemDelegate(new NoFocusDelegate());
-    ui->tableWidget->setMouseTracking(true);
+    ui->tableWidget->setMouseTracking(true);       
 }
 
 // combobox adapter 初始化
@@ -272,23 +273,51 @@ void Widget::on_pushButtonOpenAdapter_clicked()
 
     QByteArray devByteArray = devStr.toUtf8();
     const char *devName = devByteArray.data();
-    // 打开适配器
+    // 1打开适配器
     pcap->openLiveDev(devName);
-    // 获取本机ip和netmask
+    // 2获取本机ip和netmask
     pcap->setHostInfo(devName);
-    QString ipStr = pcap->getHostIpByDevName(devStr);    
-
-    QByteArray ipByteArray = ipStr.toUtf8();
-    const char * hostIp = ipByteArray.data();
-    // 线程获取本机MAC
-    pcap->getSelfMac(devName,hostIp);
+    // 3线程获取本机MAC
+    pcap->getSelfMac();
 }
 
 void Widget::getSelfMacFinishedSlot(QString mac)
 {
     ui->pushButtonOpenAdapter->setEnabled(true);
+    ui->pushButtonStartScan->setEnabled(true);
     ui->labelStatus->setText(tr("获取本机信息完毕"));
+    ui->lineEditIPStart->setText(pcap->getHostIp());
+    ui->lineEditIPEnd->setText(pcap->getHostIp());
+
     ui->labelHostIP->setText(pcap->getHostIp());
     ui->labelHostNetmask->setText(pcap->getHostNetmask());
     ui->labelHostMac->setText(mac);
+}
+
+void Widget::on_pushButtonStartScan_clicked()
+{
+    QString ipStart = ui->lineEditIPStart->text();
+    QString ipEnd = ui->lineEditIPEnd->text();
+
+    QRegExp regExp("\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b");
+    int pos = regExp.indexIn(ipStart);
+    if(pos == -1){
+        ui->labelStatus->setText("起始IP填写不规范");
+        return ;
+    }
+    pos = regExp.indexIn(ipEnd);
+    if(pos == -1){
+        ui->labelStatus->setText("结束IP填写不规范");
+        return ;
+    }
+
+    bool isValid =  pcap->ipStart2EndIsValid(ipStart,ipEnd);
+    if(!isValid){
+        ui->labelStatus->setText("起始结束IP填写大小错误");
+        return ;
+    }
+
+    ui->labelStatus->setText("开始扫描...");
+
+    pcap->scanLANHost(ipStart,ipEnd);
 }

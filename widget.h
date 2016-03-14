@@ -59,6 +59,8 @@ private slots:
     void on_ComboBoxAdapter_currentIndexChanged(const QString &arg1);
     void on_pushButtonOpenAdapter_clicked();
 
+    void on_pushButtonStartScan_clicked();
+
 public slots:
     // 获取本机Mac地址完成槽函数处理
     void getSelfMacFinishedSlot(QString mac);
