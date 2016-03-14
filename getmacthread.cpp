@@ -17,6 +17,20 @@ GetMacThread::GetMacThread(const char *devname,const char *ipAddr)
     qDebug()<< devname << " " << hostIp;
 }
 
+GetMacThread::GetMacThread(pcap_t *handle,const char *ipAddr)
+{
+    this->handle = handle;
+    strcpy(hostIp,ipAddr);
+
+    // 初始化获取Mac超时 定时器 再次发送N个广播包
+
+}
+
+GetMacThread::~GetMacThread()
+{
+    delete this;
+}
+
 // 获取本机Mac线程
 QString GetMacThread::getSelfMac()
 {
@@ -25,8 +39,6 @@ QString GetMacThread::getSelfMac()
     int res;
     EthernetHeader eh;
     ArpHeader ah;
-    struct pcap_pkthdr * pktHeader;
-    const u_char * pktData;
 
     if(!handle){
         printf("The Adapter is not be opened! Please Check!\n");
@@ -35,25 +47,34 @@ QString GetMacThread::getSelfMac()
     //将已开辟内存空间 eh.dest_mac_add 的首6个字节的值设为值 0xff。
     memset(eh.DestMAC, 0xFF, 6);
     memset(eh.SourMAC, 0x00, 6);
-    memset(ah.DestMacAdd, 0xFF, 6);
-    memset(ah.SourceMacAdd, 0x00, 6);
-    //htons将一个无符号短整型的主机数值转换为网络字节顺序
     eh.EthType = my_htons(ARP_TYPE);
+
     ah.HardwareType= my_htons(ARP_HARDWARE);
     ah.ProtocolType = my_htons(IP_TYPE);
     ah.HardwareAddLen = 6;
     ah.ProtocolAddLen = 4;
     ah.OperationField = my_htons(ARP_REQUEST);
-    ah.DestIpAdd = my_inet_addr(hostIp);
-    memset(sendbuf, 0, sizeof(sendbuf));
-    memcpy(sendbuf, &eh, sizeof(eh));
-    memcpy(sendbuf + sizeof(eh), &ah, sizeof(ah));
-    if(pcap_sendpacket(handle, sendbuf, 42) == 0) {
+    memset(ah.SourceMacAdd, 0x00, 6);
+    memset(ah.SourceIpAdd,0x00,4);
+    memset(ah.DestMacAdd, 0xFF, 6);    
+    u_long hostNIp = my_htonl(my_inet_addr(hostIp));
+    memcpy(ah.DestIpAdd,(u_char *)&hostNIp,4);
+
+    memset(sendbuf, 0, ARP_PACKET_LENGTH);
+    memcpy(sendbuf, &eh,ETHERNET_HEAD_LENGTH);
+    memcpy(sendbuf + ETHERNET_HEAD_LENGTH, &ah, ARP_PACKET_LENGTH);
+    // 发送N个广播包
+    for(int i = 0; i < 5 ; ++i){
+        if(pcap_sendpacket(handle, sendbuf, ARP_PACKET_LENGTH) == 0) {
+        }
+        else{
+            printf("PacketSendPacket in getmine Error:\n");
+            return NULL;
+        }
     }
-    else{
-        printf("PacketSendPacket in getmine Error:\n");
-        return NULL;
-    }
+
+    struct pcap_pkthdr * pktHeader;
+    const u_char * pktData;
 
     union IP{
         unsigned int ip;
@@ -62,9 +83,10 @@ QString GetMacThread::getSelfMac()
 
     char ipStr[3*4+3+1] = {0};
 
+    //&& *(unsigned short*) (pktData + 20) == my_htons(ARP_REPLY)
     while((res = pcap_next_ex(handle, &pktHeader, &pktData)) >= 0){
         if (*(unsigned short *) (pktData + 12) == my_htons(ARP_TYPE)
-                && *(unsigned short*) (pktData + 20) == my_htons(ARP_REPLY)){
+                ){
             //获取Source ip
             for(int i=0; i < 4 ; i++){
                 ipUnion.nip[i] = *(unsigned char *)(pktData + 28 + i);
@@ -92,7 +114,7 @@ QString GetMacThread::getSelfMac()
         }
         else{
             //qDebug() << "Not Reply Packet";
-        }
+        }       
     }
 
     char macStr[256] = {0};
@@ -106,6 +128,6 @@ QString GetMacThread::getSelfMac()
 
 void GetMacThread::run()
 {
-    //qDebug()<< "GetMacThread run ...";
-    getSelfMac();
+
+    getSelfMac();    
 }
