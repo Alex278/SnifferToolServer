@@ -1,24 +1,46 @@
 #ifndef TCPIPCOMMON_H
 #define TCPIPCOMMON_H
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <winsock2.h>
+
+
+
 typedef unsigned char       u_char;
 typedef unsigned short int  u_short;
 typedef unsigned int        u_int;
 typedef unsigned long       u_long;
 
-#define  DLC_HEAD_LENGTH	14
 
 #define ARP_TYPE            0x0806
-#define IP_TYPE             0x0800
+#define IP_TYPE             0x0800          //ipv4
 #define MPLS_TYPE           0x8847
 #define IPX_TYPE            0x8137
 #define IS_IS_TYPE          0x8000
 #define LACP_TYPE           0x8809
 #define _802_1x_TYPE        0x888E
-#define ARP_HARDWARE        1
-#define ARP_REQUEST         1
-#define ARP_REPLY           2
+#define ARP_HARDWARE        0x0001          //以太网
+#define ARP_REQUEST         0x0001
+#define ARP_REPLY           0x0002
 
+
+#define ETHERNET_HEAD_LENGTH    14
+#define IP_HEAD_LENGTH          20
+#define TCP_HEAD_LENGTH         20
+#define ARP_BODY_LENGTH         28
+#define ARP_PACKET_LENGTH       42
+
+
+#define PCAP_SRC_IF_STRING  "rpcap://"      //adapter
+
+#define IP_PACKET           0x10            //IP包
+#define ARP_PACKET_SCAN     0x21            //ARP主机扫描包
+#define ARP_PACKET_CHEAT    0x22            //ARP欺骗包
+#define ARP_PACKET          0x23            //ARP包
+#define UDP_PACKET          0x30            //UDP包
+#define TCP_PACKET          0x40            //TCP包
 
 //***********************************************************************************
 //常用网络协议自定义结构体
@@ -42,37 +64,37 @@ typedef struct _IPAddress{
 
 // IPv4 header 20bytes
 typedef struct _IpHeader{
-    u_char	ver_ihl;		// 版本4 + 首部长度4Version (4 bits) + Internet header length (4 bits)
-    u_char	tos;			// 服务类型Type of service
-    u_short tlen;			// 总长度Total length
-    u_short identification; // 标识Identification
-    u_short flags_fo;		// 标志4+片偏移12Flags (3 bits) + Fragment offset (13 bits)
-    u_char	ttl;			// 生存时间Time to live
-    u_char	proto;			// 协议Protocol
-    u_short crc;			// 首部校验和Header checksum
-    IPAddress	saddr;		// 源地址Source address
-    IPAddress	daddr;		// 目标地址Destination address
-    u_int	op_pad;			// 可变部分：可选字段(长度可变)28+填充部分4Option + Padding
+    u_char	VerIhl;         // 版本4 + 首部长度4Version (4 bits) + Internet header length (4 bits)
+    u_char	Tos;			// 服务类型Type of service
+    u_short Tlen;			// 总长度Total length
+    u_short Identification; // 标识Identification
+    u_short FlagsFo;		// 标志4+片偏移12Flags (3 bits) + Fragment offset (13 bits)
+    u_char	Ttl;			// 生存时间Time to live
+    u_char	Proto;			// 协议Protocol
+    u_short Crc;			// 首部校验和Header checksum
+    IPAddress	SrcAddr;	// 源地址Source address
+    IPAddress	DestAddr;	// 目标地址Destination address
+    u_int	OpPad;			// 可变部分：可选字段(长度可变)28+填充部分4Option + Padding
 }IPHeader;
 
 // TCP数据包的头部 20 bytes
 typedef struct _TCPPacketHeader {
-    u_short	srcPort;		//源端口
-    u_short	destPort;		//目的端口
-    u_int	seq;			//序列号
-    u_int	ack;			//确认序列号
-    u_short	lenres;			//数据偏移4+保留区6+URG+ACK+PSH+RST+SYN+FIN
-    u_short	win;			//窗口
-    u_short	sum;			//校验和
-    u_short	urp;			//紧急指针
+    u_short	SrcPort;		//源端口
+    u_short	DestPort;		//目的端口
+    u_int	Seq;			//序列号
+    u_int	Ack;			//确认序列号
+    u_short	Lenres;			//数据偏移4+保留区6+URG+ACK+PSH+RST+SYN+FIN
+    u_short	Win;			//窗口
+    u_short	Sum;			//校验和
+    u_short	Urp;			//紧急指针
 }TCPPacketHeader;
 
 // UDP header
 typedef struct _UDPHeader{
-    u_short sport;			// Source port
-    u_short dport;			// Destination port
-    u_short len;			// Datagram length
-    u_short crc;			// Checksum
+    u_short SrcPort;		// Source port
+    u_short DestPort;		// Destination port
+    u_short Len;			// Datagram length
+    u_short Crc;			// Checksum
 }UDPHeader;
 
 
@@ -84,9 +106,9 @@ typedef struct _ArpHeader {
     unsigned char ProtocolAddLen;         //协议地址长度,8位字段，定义以字节为单位的逻辑地址长度，对IPV4协议这个值为4
     unsigned short OperationField;        //操作字段,数据包类型,ARP请求（值为1），或者ARP应答（值为2）
     unsigned char SourceMacAdd[6];        //源（发送端）mac地址,可变长度字段，对以太网这个字段是6字节长
-    unsigned int SourceIpAdd;             //源（发送短）ip地址,发送端协议地址，可变长度字段，对IP协议，这个字段是4字节长
+    unsigned char SourceIpAdd[4];         //源（发送短）ip地址,发送端协议地址，可变长度字段，对IP协议，这个字段是4字节长
     unsigned char DestMacAdd[6];          //目的（接收端）mac地址
-    unsigned int DestIpAdd;               //目的（接收端）ip地址
+    unsigned char DestIpAdd[4];           //目的（接收端）ip地址,注意不能为u_int型，结构体对其
 }ArpHeader;
 
 //arp packet = 14 bytes ethernet header + 28 bytes request/reply
@@ -95,7 +117,12 @@ typedef struct _ArpPacket {
     ArpHeader ah;
 }ArpPacket;
 
-
+// host infomation
+typedef struct _HostInfo{
+    u_char mac[6];
+    char ip[16];
+    char netmask[16];
+}HostInfo;
 //***********************************************************************************
 //网络常用转换函数声明和说明
 //***********************************************************************************
@@ -128,7 +155,7 @@ inline char *iptos(u_long in,char * ipStr);
 inline char *my_iptos(u_long in);
 
 // 将点分十进制的字符串地址转网络字节整形
-inline u_long my_inet_addr(const char *ptr);
+inline u_int my_inet_addr(const char *ptr);
 
 
 //***********************************************************************************
@@ -210,7 +237,7 @@ char *my_iptos(u_long in)
     return output[which];
 }
 
-u_long my_inet_addr(const char *ptr)
+u_int my_inet_addr(const char *ptr)
 {
     int a[4],i=0;
     char str[255] = {0};
@@ -224,10 +251,10 @@ u_long my_inet_addr(const char *ptr)
             p3=p2+1;
             *p2='\0';
         }
-        a[i]=atoi(p1);
+        a[i] = atoi(p1);
         if(a[i]<0 || a[i]>255){
-         printf("Invalid IP address!\n");
-         exit(1);
+            printf("Invalid IP address!\n");
+            exit(1);
         }
         p1=p3;
         i++;
