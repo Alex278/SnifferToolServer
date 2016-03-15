@@ -14,15 +14,22 @@ PcapCommon::PcapCommon()
 
     handle = NULL;
     memset(hostInfo.mac,0x00,6);
+
+    //
+    hostInfoBuffer = new QQueue< QPair<QString,QString> >;
+
+    // 取数据定时器
+    getDataFromQQueueTimer = new QTimer();
+    connect(getDataFromQQueueTimer, SIGNAL(timeout()), this, SLOT(getDataFromQQueueTimerUpdateSlot()));
+    getDataFromQQueueTimer->start(1500);
 }
 
 PcapCommon::~PcapCommon()
 {
+    delete getDataFromQQueueTimer;
     pcap_freealldevs(alldevs);
     if(handle != NULL)pcap_close(handle);
 }
-
-
 
 // 扫描本机所有的适配器，并获取每个适配器的信息
 QVector<DEVInfo> PcapCommon::findAllDev()
@@ -288,5 +295,14 @@ void PcapCommon::scanHostFinishedSlot()
 void PcapCommon::scanGetHostInfoSlot(QPair<QString,QString> info)
 {
     //qDebug() << info.first << " " << info.second;
-    emit scanGetHostInfoSig(info);
+    hostInfoBuffer->enqueue(info);
+}
+
+void PcapCommon::getDataFromQQueueTimerUpdateSlot()
+{
+    QPair<QString ,QString> info;
+    if(!hostInfoBuffer->isEmpty()){
+        info = hostInfoBuffer->dequeue();
+        emit scanGetHostInfoSig(info);
+    }
 }

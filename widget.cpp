@@ -26,7 +26,6 @@ Widget::Widget(QWidget *parent) :
     connect(pcap,SIGNAL(scanCurrentIpSig(QString)),this,SLOT(scanCurrentIpSlot(QString)));
     connect(pcap,SIGNAL(scanGetHostInfoSig(QPair<QString,QString>)),this,SLOT(scanGetHostInfoSlot(QPair<QString,QString>)));
 
-
     comboboxAdapterInit();
 }
 
@@ -104,31 +103,37 @@ void Widget::addANewHost(QPair<QString,QString> info)
     ui->tableWidget->update();
 
     int row = ui->tableWidget->rowCount();
+
+
     if(row == 0){
         ui->tableWidget->insertRow(row);
+        ui->labelHostNum->setText(QString::number(row+1));
+        QPixmap icon  = style()->standardPixmap(QStyle::SP_DesktopIcon);
         for(int i = 0; i < (ui->tableWidget->columnCount()); ++i){
             QTableWidgetItem *item = new QTableWidgetItem(infoArray[i]);
             item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
             item->setFlags(item->flags() ^ Qt::ItemIsEditable);
+            if(i == 0)item->setIcon(icon);
             ui->tableWidget->setItem(row,i,item);
         }
     }
     else {
         for(int i = 0;i < row; ++i){
-            QString strText = ui->tableWidget->item(i,0)->text();
-            qDebug () << info.first << " " << strText;
+            QString strText = ui->tableWidget->item(i,0)->text();            
             if(info.first == strText){
+                return ;
+            }
+        }
+        ui->tableWidget->insertRow(row);
+        ui->labelHostNum->setText(QString::number(row+1));
+        QPixmap icon  = style()->standardPixmap(QStyle::SP_ComputerIcon);
 
-            }
-            else {
-                ui->tableWidget->insertRow(row);
-                for(int i = 0; i < (ui->tableWidget->columnCount()); ++i){
-                    QTableWidgetItem *item = new QTableWidgetItem(infoArray[i]);
-                    item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
-                    item->setFlags(item->flags() ^ Qt::ItemIsEditable);
-                    ui->tableWidget->setItem(row,i,item);
-                }
-            }
+        for(int i = 0; i < (ui->tableWidget->columnCount()); ++i){
+            QTableWidgetItem *item = new QTableWidgetItem(infoArray[i]);
+            item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+            item->setFlags(item->flags() ^ Qt::ItemIsEditable);
+            if(i == 0)item->setIcon(icon);
+            ui->tableWidget->setItem(row,i,item);
         }
     }
 }
@@ -342,6 +347,8 @@ void Widget::getSelfMacFinishedSlot(QString mac)
 void Widget::scanHostFinishedSlot()
 {
     ui->labelStatus->setText(tr("扫描主机结束"));
+    int hostNum = ui->tableWidget->rowCount();
+    ui->labelHostNum->setText(QString::number(hostNum));
 }
 
 void Widget::scanCurrentIpSlot(QString cuttentIp)
@@ -352,7 +359,7 @@ void Widget::scanCurrentIpSlot(QString cuttentIp)
 void Widget::scanGetHostInfoSlot(QPair<QString,QString> info)
 {
     // 添加进table中，并处理重复ip
-    qDebug () << info.first << " " << info.second;
+    // qDebug () << info.first << " " << info.second;
     addANewHost(info);
 }
 

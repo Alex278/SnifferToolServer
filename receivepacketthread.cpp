@@ -19,7 +19,8 @@ ReceivePacketThread::ReceivePacketThread(pcap_t *handle,HostInfo *hostInfo,u_sho
 
     if(this->type == ARP_PACKET_SCAN){
         qDebug()<< "ARP_PACKET_SCAN  Recv Thread";
-        arppacket = new YArpPacket();
+        arppacket = new YArpPacket();        
+
     }
     if(type == ARP_PACKET_CHEAT){
 
@@ -38,10 +39,11 @@ void ReceivePacketThread::recvArpScanPacket()
             if ((arppacket->getEtherNetType()) == my_ntohs(ARP_TYPE)
                     && ((arppacket->getOperationField()) == my_ntohs(ARP_REPLY))
                 ){
-                QPair<QString,QString> pair;
-                pair.first = QString(my_iptos(arppacket->getSourceIpAdd()));
-                pair.second = arppacket->getSourceMacAdd();
-                emit scanGetHostInfoSig(pair);
+                    QPair<QString,QString> pair;
+                    pair.first = QString(my_iptos(arppacket->getSourceIpAdd()));
+                    pair.second = arppacket->getSourceMacAdd();
+
+                    emit scanGetHostInfoSig(pair);
 //                qDebug("-------------------------------------------\n");
 //                qDebug("IP Address: %s",my_iptos(arppacket->getSourceIpAdd()));
 //                qDebug() << arppacket->getSourceMacAdd();

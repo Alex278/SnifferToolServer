@@ -26,6 +26,7 @@ private:
     bool scanIsFinished;
 
     YArpPacket *arppacket;
+
 public slots:
     void scanHostFinishedSlot();
 signals:

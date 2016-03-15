@@ -21,9 +21,6 @@ GetMacThread::GetMacThread(pcap_t *handle,const char *ipAddr)
 {
     this->handle = handle;
     strcpy(hostIp,ipAddr);
-
-    // 初始化获取Mac超时 定时器 再次发送N个广播包
-
 }
 
 GetMacThread::~GetMacThread()
@@ -119,7 +116,7 @@ QString GetMacThread::getSelfMac()
 
     char macStr[64] = {0};
     sprintf(macStr,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
-    //qDebug("Thread get mac: %s\n ",macStr);
+    // qDebug("Thread get mac: %s\n ",macStr);
     // 发送获取本机Mac地址完成信号(获取Mac地址要一定的时间)
     emit getSelfMacFinishedSig(QString(macStr));
 

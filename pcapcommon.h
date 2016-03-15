@@ -8,18 +8,8 @@
 #include <QObject>
 #include <QPair>
 #include <QMetaType>
-
-//typedef struct _Sparam {
-//    pcap_t *adhandle;
-//    char *ip;
-//    unsigned char *mac;
-//    char *netmask;
-//}Sparam;
-
-//typedef struct _Gparam {
-//    pcap_t *adhandle;
-//}Gparam;
-
+#include <QQueue>
+#include <QTimer>
 
 typedef struct _DEVInfo{
     QString name;
@@ -78,6 +68,8 @@ public slots:
     void scanCurrentIpSlot(QString);
     // 接收扫描到的主机信息
     void scanGetHostInfoSlot(QPair<QString,QString>);
+    // 定时器溢出槽函数
+    void getDataFromQQueueTimerUpdateSlot();
 signals:
     void getSelfMacFinishedSig(QString mac);
     void scanHostFinishedSig();
@@ -87,6 +79,9 @@ protected:
     pcap_t * handle;
     HostInfo hostInfo;
     pcap_if_t *alldevs;
+    QTimer *getDataFromQQueueTimer;
+
+    QQueue< QPair<QString,QString> > *hostInfoBuffer;
 
 };
 
