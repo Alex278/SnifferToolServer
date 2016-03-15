@@ -83,10 +83,10 @@ QString GetMacThread::getSelfMac()
 
     char ipStr[3*4+3+1] = {0};
 
-    //&& *(unsigned short*) (pktData + 20) == my_htons(ARP_REPLY)
+    //
     while((res = pcap_next_ex(handle, &pktHeader, &pktData)) >= 0){
         if (*(unsigned short *) (pktData + 12) == my_htons(ARP_TYPE)
-                ){
+                && *(unsigned short*) (pktData + 20) == my_htons(ARP_REPLY)){
             //获取Source ip
             for(int i=0; i < 4 ; i++){
                 ipUnion.nip[i] = *(unsigned char *)(pktData + 28 + i);
@@ -117,9 +117,9 @@ QString GetMacThread::getSelfMac()
         }       
     }
 
-    char macStr[256] = {0};
+    char macStr[64] = {0};
     sprintf(macStr,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
-    printf("thread get mac: %s\n ",macStr);
+    //qDebug("Thread get mac: %s\n ",macStr);
     // 发送获取本机Mac地址完成信号(获取Mac地址要一定的时间)
     emit getSelfMacFinishedSig(QString(macStr));
 

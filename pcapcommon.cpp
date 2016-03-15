@@ -9,6 +9,9 @@
 
 PcapCommon::PcapCommon()
 {
+    // 注册自定义结构参数
+    qRegisterMetaType< QPair<QString,QString> >("QPair<QString,QString>");
+
     handle = NULL;
     memset(hostInfo.mac,0x00,6);
 }
@@ -130,94 +133,6 @@ QString PcapCommon::getHostIpByDevName(QString dev)
     return QString("0.0.0.0");
 }
 
-//QString PcapCommon::getSelfMac(void)
-//{
-//    unsigned char mac[6] = {0};
-//    unsigned char sendbuf[42] = {0};
-//    int res;
-
-//    //const char * hostIp = "10.10.1.100";
-
-//    EthernetHeader eh;
-//    ArpHeader ah;
-//    struct pcap_pkthdr * pktHeader;
-//    const u_char * pktData;
-
-//    if(!handle){
-//        printf("The Adapter is not be opened! Please Check!\n");
-//        return NULL;
-//    }
-//    //将已开辟内存空间 eh.dest_mac_add 的首6个字节的值设为值 0xff。
-//    memset(eh.DestMAC, 0xFF, 6);
-//    memset(eh.SourMAC, 0x00, 6);
-//    memset(ah.DestMacAdd, 0xFF, 6);
-//    memset(ah.SourceMacAdd, 0x00, 6);
-//    //htons将一个无符号短整型的主机数值转换为网络字节顺序
-//    eh.EthType = my_htons(ARP_TYPE);
-//    ah.HardwareType= my_htons(ARP_HARDWARE);
-//    ah.ProtocolType = my_htons(IP_TYPE);
-//    ah.HardwareAddLen = 6;
-//    ah.ProtocolAddLen = 4;
-//    ah.OperationField = my_htons(ARP_REQUEST);
-//    ah.DestIpAdd = my_inet_addr(hostInfo.ip);
-//    memset(sendbuf, 0, sizeof(sendbuf));
-//    memcpy(sendbuf, &eh, sizeof(eh));
-//    memcpy(sendbuf + sizeof(eh), &ah, sizeof(ah));
-//    if(pcap_sendpacket(handle, sendbuf, 42) == 0) {
-//    }
-//    else{
-//        printf("PacketSendPacket in getmine Error:\n");
-//        return NULL;
-//    }
-
-//    union IP{
-//        unsigned int ip;
-//        unsigned char nip[4];
-//    }ipUnion;
-
-//    char ipStr[3*4+3+1] = {0};
-
-//    while((res = pcap_next_ex(handle, &pktHeader, &pktData)) >= 0){
-//        if (*(unsigned short *) (pktData + 12) == my_htons(ARP_TYPE)
-//                && *(unsigned short*) (pktData + 20) == my_htons(ARP_REPLY)){
-//            //获取Source ip
-//            for(int i=0; i < 4 ; i++){
-//                ipUnion.nip[i] = *(unsigned char *)(pktData + 28 + i);
-//            }
-//            iptos(ipUnion.ip,ipStr);
-//            //收到的arp包的源ip等于本机ip,则获取本机Mac（源Mac）
-//            if(strncmp(hostInfo.ip,ipStr,strlen(hostInfo.ip)) == 0){
-//                for(int i = 0; i < 6; i++) {
-//                    mac[i] = *(unsigned char *) (pktData + 22 + i);
-//                }
-//                break;
-//            }
-//            //获取接收的Dest ip
-//            for(int i = 0; i < 4 ; i++){
-//                ipUnion.nip[i] = *(unsigned char *)(pktData + 38 + i);
-//            }
-//            iptos(ipUnion.ip,ipStr);
-//            //收到的arp包的源ip等于本机ip,则获取本机Mac（源Mac）
-//            if(strncmp(hostInfo.ip,ipStr,strlen(hostInfo.ip)) == 0){
-//                for (int i = 0; i < 6; i++) {
-//                    mac[i] = *(unsigned char *) (pktData + 32 + i);
-//                }
-//                break;
-//            }
-//        }
-//        else{
-//            qDebug() << "Not Reply Packet";
-//        }
-//    }
-
-//    char macStr[256] = {0};
-//    sprintf(macStr,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
-//    printf("thread get mac: %s\n ",macStr);
-
-//    return QString(macStr);
-//}
-
-
 // 获取本机Mac
 void PcapCommon::getSelfMac()
 {
@@ -299,59 +214,6 @@ QString PcapCommon::getHostNetmask()
     return QString(hostInfo.netmask);
 }
 
-// 向局域网内所有主机广播ARP请求包
-/*
-void PcapCommon::sendArpPacket()
-{
-    pcap_t *adhandle = handle;
-    char *ip = hostInfo.ip;
-    unsigned char *mac = hostInfo.mac;
-    char *netmask = hostInfo.netmask;
-    //printf("Host Mac:%02x-%02x-%02x-%02x-%02x-%02x\n", mac[0], mac[1], mac[2],mac[3], mac[4], mac[5]);
-    //printf("Host Ip:%s\n", ip);
-    //printf("Host Netmask:%s\n", netmask);
-    unsigned char sendbuf[42];
-    EthernetHeader eh;
-    ArpHeader ah;
-    // 赋值MAC地址
-    memset(eh.DestMAC, 0xff, 6);
-    memcpy(eh.SourMAC, mac, 6);
-    memcpy(ah.SourceMacAdd, mac, 6);
-    memset(ah.DestMacAdd, 0x00, 6);
-    eh.EthType = my_htons(ARP_TYPE);
-    ah.HardwareType = my_htons(ARP_HARDWARE);
-    ah.ProtocolType = my_htons(IP_TYPE);
-    ah.HardwareAddLen = 6;
-    ah.ProtocolAddLen = 4;
-    ah.SourceIpAdd = my_inet_addr(ip);
-    ah.OperationField = my_htons(ARP_REQUEST);
-    // 向局域网内广播发送arp包
-    unsigned long myip = my_inet_addr(ip);
-    unsigned long mynetmask = my_inet_addr(netmask);
-    unsigned long hisip = my_htonl((myip & mynetmask));
-
-    printf("Host ip Num: %ld\n",hisip);
-    // 向N个主机发送
-    char ipStr[4] = {0};
-    for(unsigned int i = 0; i < hisip; i++){
-        ah.DestIpAdd = my_htonl(hisip + i);
-        printf("send ip: %s \n",iptos(ah.DestIpAdd,ipStr));
-        // 构造一个ARP请求
-        memset(sendbuf, 0, sizeof(sendbuf));
-        memcpy(sendbuf, &eh, sizeof(eh));
-        memcpy(sendbuf + sizeof(eh), &ah, sizeof(ah));
-        // 如果发送成功
-        if (pcap_sendpacket(adhandle, sendbuf, 42) == 0){
-            //printf("\nPacketSend succeed\n");
-        } else {
-            printf("PacketSendPacket in getmine Error");
-        }
-        // 每隔多少微秒向指定ip发送ARP包
-        QThread::usleep(100000);
-    }
-}
-*/
-
 //ipStart ipEnd是否有效
 bool PcapCommon::ipStart2EndIsValid(QString ipStart,QString ipEnd)
 {
@@ -378,7 +240,16 @@ void PcapCommon::scanLANHost(QString ipStart,QString ipEnd)
     sendScan->getArpPacket()->fillArpPacket(ARP_HARDWARE,IP_TYPE,ARP_REQUEST,hostInfo.mac,hostInfo.ip,adestMac,"");
     // 设置待发送的ARP包完毕
     sendScan->getArpPacket()->setData();    
+
+    // New 接收扫描线程
+    ReceivePacketThread *recvScan = new ReceivePacketThread(handle,&hostInfo,ARP_PACKET_SCAN);
+    connect(sendScan,SIGNAL(scanHostFinishedSig()),recvScan,SLOT(scanHostFinishedSlot()));
+    connect(sendScan,SIGNAL(scanHostFinishedSig()),this,SLOT(scanHostFinishedSlot()));
+    connect(sendScan,SIGNAL(scanCurrentIpSig(QString)),this,SLOT(scanCurrentIpSlot(QString)));
+    connect(recvScan,SIGNAL(scanGetHostInfoSig(QPair<QString,QString>)),this,SLOT(scanGetHostInfoSlot(QPair<QString,QString>)));
+
     sendScan->start();
+    recvScan->start();
 }
 
 u_char PcapCommon::hexStr2UChar(QString hexS)
@@ -394,9 +265,9 @@ u_char PcapCommon::hexStr2UChar(QString hexS)
 
 void PcapCommon::getSelfMacFinishedSlot(QString mac)
 {     
-    printf("PcapCommon getSelfMacFinishedSlot\n");    
+    //printf("PcapCommon getSelfMacFinishedSlot\n");
     QStringList list = mac.split("-");
-    qDebug()<< list;
+    //qDebug()<< list;
     for(int i = 0; i < list.length(); ++i){
         hostInfo.mac[i] = hexStr2UChar(list.at(i));
     }
@@ -404,3 +275,18 @@ void PcapCommon::getSelfMacFinishedSlot(QString mac)
     emit getSelfMacFinishedSig(mac);
 }
 
+void PcapCommon::scanCurrentIpSlot(QString currentIp)
+{
+    emit scanCurrentIpSig(currentIp);
+}
+
+void PcapCommon::scanHostFinishedSlot()
+{
+    emit scanHostFinishedSig();
+}
+
+void PcapCommon::scanGetHostInfoSlot(QPair<QString,QString> info)
+{
+    qDebug() << info.first << " " << info.second;
+    emit scanGetHostInfoSig(info);
+}

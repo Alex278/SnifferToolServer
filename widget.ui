@@ -390,9 +390,8 @@ QPushButton:flat {
                   </size>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">QLabel{
-	
-	color: rgb(0, 0, 127);
+                  <string notr="true">QLabel{	
+	color: rgb(85, 255, 0);
 	font:bold;
 }</string>
                  </property>

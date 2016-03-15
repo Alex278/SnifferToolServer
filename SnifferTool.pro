@@ -18,11 +18,22 @@ LIBS += -LE:/WinPcapLib/Lib/   -lPacket -lwpcap
 SOURCES += main.cpp\
         widget.cpp \
     NoFocusDelegate.cpp \
-    pcapcommon.cpp
+    pcapcommon.cpp \
+    getmacthread.cpp \
+    tcpipprotocol.cpp \
+    sendpacketthread.cpp \
+    receivepacketthread.cpp
 
 HEADERS  += widget.h \
     tcpipcommon.h \
     NoFocusDelegate.h \
-    pcapcommon.h
+    pcapcommon.h \
+    getmacthread.h \
+    tcpipprotocol.h \
+    sendpacketthread.h \
+    receivepacketthread.h
 
 FORMS    += widget.ui
+
+DISTFILES += \
+    readme.txt

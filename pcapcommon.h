@@ -6,7 +6,8 @@
 #include <QString>
 #include <QVector>
 #include <QObject>
-
+#include <QPair>
+#include <QMetaType>
 
 //typedef struct _Sparam {
 //    pcap_t *adhandle;
@@ -71,9 +72,17 @@ public:
 public slots:
     // 获取本机Mac地址完成槽函数处理
     void getSelfMacFinishedSlot(QString mac);   
+    // 扫描主机结束
+    void scanHostFinishedSlot();
+    // 接收当前正在扫描的ip地址
+    void scanCurrentIpSlot(QString);
+    // 接收扫描到的主机信息
+    void scanGetHostInfoSlot(QPair<QString,QString>);
 signals:
     void getSelfMacFinishedSig(QString mac);
-
+    void scanHostFinishedSig();
+    void scanCurrentIpSig(QString);
+    void scanGetHostInfoSig(QPair<QString,QString>);
 protected:
     pcap_t * handle;
     HostInfo hostInfo;

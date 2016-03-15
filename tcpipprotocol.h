@@ -2,6 +2,7 @@
 #define TCPIPPROTOCOL_H
 
 #include "tcpipcommon.h"
+#include <QString>
 
 
 namespace TcpIpProtocol {
@@ -74,8 +75,26 @@ public:
                        u_char *srcMac,char *srcIp,u_char *destMac,char *destIp);
     // 将EthernetHeader 和 ArpHeader 整合成ArpPacket data
     void setData();
+    void setData(const u_char *data);
+    /** 获取数据 **/
     //
-    u_char *getData();
+    u_char * getData();
+    //
+    u_short getEtherNetType();
+    //
+    u_short getHardwareType();
+    //
+    u_short getProtocolType();
+    //
+    u_short getOperationField();
+    //
+    QString getSourceMacAdd();
+    //
+    u_long getSourceIpAdd();
+    //
+    u_long getDestIpAdd();
+    //
+    QString getDestMacAdd();
     //
     YEthernetPacket &getEthernetPacket();
 private:

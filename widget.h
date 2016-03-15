@@ -3,6 +3,8 @@
 
 #include <QWidget>
 #include <QObject>
+#include <QPair>
+#include <QMetaType>
 #include "pcapcommon.h"
 
 // 鼠标相关
@@ -36,7 +38,8 @@ private:
     void tabViewInit();
 // ComboboxAdapter初始化
     void comboboxAdapterInit();
-
+// 添加一个Host info
+    void addANewHost(QPair<QString,QString> info);
 // 鼠标和窗口相关
 private:
     bool isLeftPressed;
@@ -64,6 +67,12 @@ private slots:
 public slots:
     // 获取本机Mac地址完成槽函数处理
     void getSelfMacFinishedSlot(QString mac);
+    // 扫描主机结束
+    void scanHostFinishedSlot();
+    // 接收当前正在扫描的ip地址
+    void scanCurrentIpSlot(QString);
+    // 接收扫描到的主机信息
+    void scanGetHostInfoSlot(QPair<QString,QString>);
 
 };
 

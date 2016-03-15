@@ -9,7 +9,11 @@ Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget)
 {
-    ui->setupUi(this);   
+    ui->setupUi(this);
+
+    // 注册自定义结构参数
+    qRegisterMetaType< QPair<QString,QString> >("QPair<QString,QString>");
+
     mouseAndWinInit();
     tabWidgetPanelInit();
     tabViewInit();
@@ -18,6 +22,10 @@ Widget::Widget(QWidget *parent) :
     pcap = new PcapCommon();
 
     connect(pcap,SIGNAL(getSelfMacFinishedSig(QString)),this,SLOT(getSelfMacFinishedSlot(QString)));
+    connect(pcap,SIGNAL(scanHostFinishedSig()),this,SLOT(scanHostFinishedSlot()));
+    connect(pcap,SIGNAL(scanCurrentIpSig(QString)),this,SLOT(scanCurrentIpSlot(QString)));
+    connect(pcap,SIGNAL(scanGetHostInfoSig(QPair<QString,QString>)),this,SLOT(scanGetHostInfoSlot(QPair<QString,QString>)));
+
 
     comboboxAdapterInit();
 }
@@ -47,13 +55,14 @@ void Widget::tabWidgetPanelInit()
 // TabView初始化
 void Widget::tabViewInit()
 {
-    ui->tableWidget->setColumnCount(7);
+    ui->tableWidget->setColumnCount(2);
     ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
     ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableWidget->horizontalHeader()->setFixedHeight(35);
     QStringList header;
-    header <<tr("IP地址")<<tr("机器名")<<tr("上行带宽(KB/S)") << "下行带宽(KB/S)"
-           << tr("MAC地址") << tr("网卡描述") << tr("日流量");
+//    header <<tr("IP地址")<<tr("机器名")<<tr("上行带宽(KB/S)") << "下行带宽(KB/S)"
+//           << tr("MAC地址") << tr("网卡描述") << tr("日流量");
+    header << tr("IP地址") << tr("MAC地址");
     ui->tableWidget->setHorizontalHeaderLabels(header);
     QFont font = ui->tableWidget->horizontalHeader()->font();
     font.setBold(true);
@@ -63,7 +72,7 @@ void Widget::tabViewInit()
     //ui->tableWidget->horizontalHeader()->setStyleSheet("QHeaderView::section{background:greenyellow;}");
     ui->tableWidget->horizontalHeader()->setHighlightSections(false);
     ui->tableWidget->setFrameShape(QFrame::NoFrame);
-    ui->tableWidget->verticalHeader()->hide();
+    //ui->tableWidget->verticalHeader()->hide();
     //ui->tableWidget->horizontalHeader()->resizeSection(0,150);
     //ui->tableWidget->horizontalHeader()->resizeSection(1,80);
     //ui->tableWidget->horizontalHeader()->resizeSection(2,160);
@@ -83,6 +92,30 @@ void Widget::comboboxAdapterInit()
     for(int i = 0; i < devInfo.length(); ++i){
         QPixmap icon  = style()->standardPixmap(QStyle::SP_DriveNetIcon);
         ui->ComboBoxAdapter->addItem(icon,devInfo.at(i).name);
+    }
+}
+
+//新增一个用户到tableWidget
+void Widget::addANewHost(QPair<QString,QString> info)
+{
+    QString infoArray[2] = {info.first,info.second};
+
+    int row = ui->tableWidget->rowCount();
+    ui->tableWidget->insertRow(row);
+
+    if(row > 0){
+      for(int i = 0;i < row; ++i){
+            QString strText = ui->tableWidget->item(i,0)->text();
+            if(info.first == strText);
+        }
+    }
+    else {
+        for(int i = 0; i < (ui->tableWidget->columnCount()); ++i){
+            QTableWidgetItem *item = new QTableWidgetItem(infoArray[i]);
+            item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+            item->setFlags(item->flags() ^ Qt::ItemIsEditable);
+            ui->tableWidget->setItem(row,i,item);
+        }
     }
 }
 
@@ -260,8 +293,7 @@ void Widget::on_closeButton_clicked()
 //其他槽函数
 //-----------------------------------------------------------
 void Widget::on_ComboBoxAdapter_currentIndexChanged(const QString &arg1)
-{
-    //qDebug()<< arg1;
+{   
     //ui->ComboBoxAdapter->setEnabled(false);
 }
 
@@ -282,8 +314,7 @@ void Widget::on_pushButtonOpenAdapter_clicked()
 }
 
 void Widget::getSelfMacFinishedSlot(QString mac)
-{
-    ui->pushButtonOpenAdapter->setEnabled(true);
+{    
     ui->pushButtonStartScan->setEnabled(true);
     ui->labelStatus->setText(tr("获取本机信息完毕"));
     ui->lineEditIPStart->setText(pcap->getHostIp());
@@ -292,6 +323,23 @@ void Widget::getSelfMacFinishedSlot(QString mac)
     ui->labelHostIP->setText(pcap->getHostIp());
     ui->labelHostNetmask->setText(pcap->getHostNetmask());
     ui->labelHostMac->setText(mac);
+}
+
+void Widget::scanHostFinishedSlot()
+{
+    ui->labelStatus->setText(tr("扫描主机结束"));
+}
+
+void Widget::scanCurrentIpSlot(QString cuttentIp)
+{
+    ui->labelStatus->setText(cuttentIp);
+}
+
+void Widget::scanGetHostInfoSlot(QPair<QString,QString> info)
+{
+    // 添加进table中，并处理重复ip
+    qDebug () << info.first << " " << info.second;
+    addANewHost(info);
 }
 
 void Widget::on_pushButtonStartScan_clicked()
@@ -317,7 +365,6 @@ void Widget::on_pushButtonStartScan_clicked()
         return ;
     }
 
-    ui->labelStatus->setText("开始扫描...");
-
+    ui->labelStatus->setText("开始扫描...");    
     pcap->scanLANHost(ipStart,ipEnd);
 }

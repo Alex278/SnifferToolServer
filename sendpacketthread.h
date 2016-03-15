@@ -44,6 +44,9 @@ private:
 
     YArpPacket *arppacket;
     YTcpPacket *tcppacket;
+signals:
+    void scanHostFinishedSig();
+    void scanCurrentIpSig(QString);
 };
 
 #endif // SENDPACKETTHREAD_H
