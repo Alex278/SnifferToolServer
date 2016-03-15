@@ -77,6 +77,7 @@ public:
     void setData();
     void setData(const u_char *data);
     /** 获取数据 **/
+    void clearData();
     //
     u_char * getData();
     //

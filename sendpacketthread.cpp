@@ -76,7 +76,7 @@ void SendPacketThread::sendArpScanPacket()
             printf("PacketSendPacket in getmine Error");
         }
         // 每隔多少微秒向指定ip发送ARP包
-        QThread::usleep(100000);
+        QThread::usleep(250000);
     }
     emit scanHostFinishedSig();
 }

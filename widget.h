@@ -38,7 +38,7 @@ private:
     void tabViewInit();
 // ComboboxAdapter初始化
     void comboboxAdapterInit();
-// 添加一个Host info
+// 新增一个主机信息到tableWidget
     void addANewHost(QPair<QString,QString> info);
 // 鼠标和窗口相关
 private:

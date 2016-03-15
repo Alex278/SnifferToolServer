@@ -75,6 +75,11 @@ void YArpPacket::setData(const u_char *data)
     memcpy(this->data,data,ARP_PACKET_LENGTH);
 }
 
+void YArpPacket::clearData()
+{
+    memset(data,0x00,ARP_PACKET_LENGTH);
+}
+
 u_char * YArpPacket::getData()
 {
     return data;
@@ -82,7 +87,7 @@ u_char * YArpPacket::getData()
 
 u_short YArpPacket::getEtherNetType()
 {
-    u_short etherType = my_ntohs(*(u_short *)(data + 12));
+    u_short etherType = (*(u_short *)(data + 12));
     return etherType;
 }
 
@@ -101,7 +106,7 @@ u_short YArpPacket::getProtocolType()
 //
 u_short YArpPacket::getOperationField()
 {
-    u_short opFiled = my_ntohs(*(u_short*) (data + 20));
+    u_short opFiled = (*(u_short *)(data + 20));
     return opFiled;
 }
 

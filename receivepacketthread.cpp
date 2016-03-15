@@ -29,27 +29,26 @@ ReceivePacketThread::ReceivePacketThread(pcap_t *handle,HostInfo *hostInfo,u_sho
 void ReceivePacketThread::recvArpScanPacket()
 {
     pcap_t *adhandle = this->handle;
-    int res;
-    unsigned char mac[6];
+    int res;    
     struct pcap_pkthdr * pktHeader;
     const u_char * pktData;
     while (!scanIsFinished) {
-        if ((res = pcap_next_ex(adhandle, &pktHeader, &pktData)) >= 0) {
+        if ((res = pcap_next_ex(adhandle, &pktHeader, &pktData)) >= 0) {            
             arppacket->setData(pktData);
-            if (arppacket->getEtherNetType() == ARP_TYPE
-                    && arppacket->getOperationField() == ARP_REPLY
+            if ((arppacket->getEtherNetType()) == my_ntohs(ARP_TYPE)
+                    && ((arppacket->getOperationField()) == my_ntohs(ARP_REPLY))
                 ){
                 QPair<QString,QString> pair;
                 pair.first = QString(my_iptos(arppacket->getSourceIpAdd()));
                 pair.second = arppacket->getSourceMacAdd();
                 emit scanGetHostInfoSig(pair);
-                //qDebug("-------------------------------------------\n");
-                //qDebug("IP Address: %s",my_iptos(arppacket->getSourceIpAdd()));
-                //qDebug() << arppacket->getSourceMacAdd();
-                //qDebug("\n");
+//                qDebug("-------------------------------------------\n");
+//                qDebug("IP Address: %s",my_iptos(arppacket->getSourceIpAdd()));
+//                qDebug() << arppacket->getSourceMacAdd();
+//                qDebug("\n");
             }
         }
-        usleep(100000);
+        //usleep(10000);
     }
 }
 

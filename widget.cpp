@@ -95,26 +95,40 @@ void Widget::comboboxAdapterInit()
     }
 }
 
-//新增一个用户到tableWidget
+// 新增一个主机信息到tableWidget
 void Widget::addANewHost(QPair<QString,QString> info)
 {
     QString infoArray[2] = {info.first,info.second};
 
-    int row = ui->tableWidget->rowCount();
-    ui->tableWidget->insertRow(row);
+    // 接收数据太快，获取的row有时间上误差，需建立缓冲区来新增主机信息
+    ui->tableWidget->update();
 
-    if(row > 0){
-      for(int i = 0;i < row; ++i){
-            QString strText = ui->tableWidget->item(i,0)->text();
-            if(info.first == strText);
-        }
-    }
-    else {
+    int row = ui->tableWidget->rowCount();
+    if(row == 0){
+        ui->tableWidget->insertRow(row);
         for(int i = 0; i < (ui->tableWidget->columnCount()); ++i){
             QTableWidgetItem *item = new QTableWidgetItem(infoArray[i]);
             item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
             item->setFlags(item->flags() ^ Qt::ItemIsEditable);
             ui->tableWidget->setItem(row,i,item);
+        }
+    }
+    else {
+        for(int i = 0;i < row; ++i){
+            QString strText = ui->tableWidget->item(i,0)->text();
+            qDebug () << info.first << " " << strText;
+            if(info.first == strText){
+
+            }
+            else {
+                ui->tableWidget->insertRow(row);
+                for(int i = 0; i < (ui->tableWidget->columnCount()); ++i){
+                    QTableWidgetItem *item = new QTableWidgetItem(infoArray[i]);
+                    item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+                    item->setFlags(item->flags() ^ Qt::ItemIsEditable);
+                    ui->tableWidget->setItem(row,i,item);
+                }
+            }
         }
     }
 }

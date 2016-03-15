@@ -287,6 +287,6 @@ void PcapCommon::scanHostFinishedSlot()
 
 void PcapCommon::scanGetHostInfoSlot(QPair<QString,QString> info)
 {
-    qDebug() << info.first << " " << info.second;
+    //qDebug() << info.first << " " << info.second;
     emit scanGetHostInfoSig(info);
 }
