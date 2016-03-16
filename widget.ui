@@ -16,11 +16,12 @@
   <property name="styleSheet">
    <string notr="true">QToolTip
 {
-     border: 1px solid black;
-     background-color: #ffa02f;
-     padding: 1px;
-     border-radius: 3px;
-     opacity: 100;
+    border: 1px solid black;
+    background-color: #ffa02f;    
+	padding: 1px;
+    border-radius: 3px;
+	opacity: 100;
+	color: rgb(85, 0, 255);
 }
 
 .Widget
@@ -275,7 +276,7 @@ QPushButton:flat {
              </property>
              <property name="styleSheet">
               <string notr="true">QLineEdit{
-	color: rgb(255, 0, 0);
+	color: rgb(0, 0, 255);	
 	font: bold 12px;
 }</string>
              </property>
@@ -316,7 +317,7 @@ QPushButton:flat {
              </property>
              <property name="styleSheet">
               <string notr="true">QLineEdit{
-	color: rgb(255, 0, 0);
+	color: rgb(0, 0, 255);	
 	font: bold 12px;
 }</string>
              </property>

@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QPair>
 #include <QMetaType>
+#include <QMenu>
+#include <QTableWidgetItem>
 #include "pcapcommon.h"
 
 // 鼠标相关
@@ -34,12 +36,14 @@ private:
 private:
 // TabWidget面板相关
     void tabWidgetPanelInit();
-// TabView初始化
-    void tabViewInit();
+// TabWidget初始化
+    void tabWidgetInit();
 // ComboboxAdapter初始化
     void comboboxAdapterInit();
 // 新增一个主机信息到tableWidget
     void addANewHost(QPair<QString,QString> info);
+// 从tablewidge中，通过网关ip获取网关mac
+    QString getGatewayMacFromTabWidget();
 // 鼠标和窗口相关
 private:
     bool isLeftPressed;
@@ -58,12 +62,9 @@ private slots:
     void on_minButton_clicked();
     void on_maxButton_clicked();
     void on_closeButton_clicked();
-
     void on_ComboBoxAdapter_currentIndexChanged(const QString &arg1);
     void on_pushButtonOpenAdapter_clicked();
-
     void on_pushButtonStartScan_clicked();
-
 public slots:
     // 获取本机Mac地址完成槽函数处理
     void getSelfMacFinishedSlot(QString mac);
@@ -73,7 +74,12 @@ public slots:
     void scanCurrentIpSlot(QString);
     // 接收扫描到的主机信息
     void scanGetHostInfoSlot(QPair<QString,QString>);
-
+    // tab 单元格双击槽函数
+    void tablItemDoubleClickedSlot(QTableWidgetItem *item);
+    // tab 鼠标进入item
+    void itemEnteredHover(QTableWidgetItem *);
+    // 获取网速
+    void trafficStatisticNetSpeedSlot(QString);
 };
 
 #endif // WIDGET_H

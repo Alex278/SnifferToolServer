@@ -59,7 +59,7 @@ void YArpPacket::fillArpPacket(u_short hdType,u_short proType,u_short opFilt,
     memcpy(ah->DestMacAdd, destMac, 6);    
     u_long srcIpN = my_htonl(my_inet_addr(srcIp));
     memcpy(ah->SourceIpAdd,(u_char*)&srcIpN,4);
-    u_long destIpN = my_inet_addr(destIp);
+    u_long destIpN = my_htonl(my_inet_addr(destIp));
     memcpy(ah->DestIpAdd,(u_char*)&destIpN,4);
 }
 

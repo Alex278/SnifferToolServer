@@ -1,3 +1,6 @@
+// ---------------------------------------------
+// pcap操作相关，中间层
+// ---------------------------------------------
 #ifndef PCAPCOMMON_H
 #define PCAPCOMMON_H
 
@@ -10,6 +13,7 @@
 #include <QMetaType>
 #include <QQueue>
 #include <QTimer>
+#include "sendpacketthread.h"
 
 typedef struct _DEVInfo{
     QString name;
@@ -47,6 +51,10 @@ public:
     HostInfo getHostInfo();
     // 获取Host IP
     QString getHostIp();
+    // 获取Host IP(通过winsock2)
+    QString getHostIpByWinSock();
+    // 获取本机网关(通过winsock2)
+    QString getGateway();
     // 获取Host Mac(是在getSelfMac的前提下，方便第二次调用，不需要通过发送ARP包来获取MAC地址)
     QString getHostMac();
     // 获取子网掩码
@@ -57,8 +65,12 @@ public:
     // ip地址&掩码地址 =
     // 有效主机地址的数量=2^(主机地址二进制位数)-2
     void scanLANHost(QString ipStart,QString ipEnd);
-    // 向局域网内所有主机广播ARP请求包
-    //void sendArpPacket();
+    // ARP欺骗指定主机
+    void arpCheatHost(QString cheatIp,QString cheatMac,QString gatewayMac);
+    // 退出ARP Cheat Thread
+    void quitArpCheatThread(QString);
+    // 统计本机流量
+    void trafficStatistic(const char *dev);
 public slots:
     // 获取本机Mac地址完成槽函数处理
     void getSelfMacFinishedSlot(QString mac);   
@@ -70,17 +82,21 @@ public slots:
     void scanGetHostInfoSlot(QPair<QString,QString>);
     // 定时器溢出槽函数
     void getDataFromQQueueTimerUpdateSlot();
+    // 获取网速
+    void trafficStatisticNetSpeedSlot(QString);
 signals:
     void getSelfMacFinishedSig(QString mac);
     void scanHostFinishedSig();
     void scanCurrentIpSig(QString);
     void scanGetHostInfoSig(QPair<QString,QString>);
+    void trafficStatisticNetSpeedSig(QString);
 protected:
     pcap_t * handle;
     HostInfo hostInfo;
     pcap_if_t *alldevs;
     QTimer *getDataFromQQueueTimer;
 
+    QMap< QString,SendPacketThread * > *sendThreadAdd;
     QQueue< QPair<QString,QString> > *hostInfoBuffer;
 
 };

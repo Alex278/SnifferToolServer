@@ -18,7 +18,7 @@ ReceivePacketThread::ReceivePacketThread(pcap_t *handle,HostInfo *hostInfo,u_sho
     this->type = type;
 
     if(this->type == ARP_PACKET_SCAN){
-        qDebug()<< "ARP_PACKET_SCAN  Recv Thread";
+        //qDebug()<< "ARP_PACKET_SCAN  Recv Thread";
         arppacket = new YArpPacket();        
 
     }
@@ -49,8 +49,7 @@ void ReceivePacketThread::recvArpScanPacket()
 //                qDebug() << arppacket->getSourceMacAdd();
 //                qDebug("\n");
             }
-        }
-        //usleep(10000);
+        }        
     }
 }
 
@@ -61,6 +60,7 @@ void ReceivePacketThread::run()
         recvArpScanPacket();
         //
         delete hostInfo;
+        //
         if(type == ARP_PACKET_SCAN)delete arppacket;
         qDebug() << "Rece ARP_PACKET_SCAN is quit";
         this->quit();
@@ -72,7 +72,7 @@ void ReceivePacketThread::run()
 
 void ReceivePacketThread::scanHostFinishedSlot()
 {
-    qDebug() << "Scan host is finished slot";
+    //qDebug() << "Scan host is finished slot";
     scanIsFinished = true;
 }
 

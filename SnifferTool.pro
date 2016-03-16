@@ -11,9 +11,14 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = SnifferTool
 TEMPLATE = app
 
+#-------------------------------------------------
+# WinPcap
 INCLUDEPATH += E:\WinPcapLib\Include
 LIBS += -LE:/WinPcapLib/Lib/   -lPacket -lwpcap
-
+# WinSock
+LIBS += -lws2_32
+LIBS += -liphlpapi
+#-------------------------------------------------
 
 SOURCES += main.cpp\
         widget.cpp \
@@ -22,7 +27,8 @@ SOURCES += main.cpp\
     getmacthread.cpp \
     tcpipprotocol.cpp \
     sendpacketthread.cpp \
-    receivepacketthread.cpp
+    receivepacketthread.cpp \
+    trafficstatistic.cpp
 
 HEADERS  += widget.h \
     tcpipcommon.h \
@@ -31,7 +37,8 @@ HEADERS  += widget.h \
     getmacthread.h \
     tcpipprotocol.h \
     sendpacketthread.h \
-    receivepacketthread.h
+    receivepacketthread.h \
+    trafficstatistic.h
 
 FORMS    += widget.ui
 

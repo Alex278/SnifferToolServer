@@ -31,11 +31,24 @@ SendPacketThread::SendPacketThread(pcap_t *handle,HostInfo *hostInfo,u_short typ
     }
 }
 
+SendPacketThread::SendPacketThread(pcap_t *handle,HostInfo *hostInfo,u_short type,HostInfo *cheatHostInfo)
+{
+    quitFg = false;
+    this->handle = handle;
+
+    this->type = type;
+    if(this->type == ARP_PACKET_CHEAT){
+        this->cheatHostInfo = new HostInfo();
+        memcpy(this->cheatHostInfo,cheatHostInfo,sizeof(HostInfo));
+        arppacket = new YArpPacket();
+    }
+}
 
 SendPacketThread::~SendPacketThread()
 {
     //delete hostInfo;
-    //if(this->type == ARP_PACKET_SCAN)delete arppacket;    
+    //if(this->type == ARP_PACKET_SCAN)delete arppacket;
+    //if(this->type == ARP_PACKET_CHEAT)delete arppacket;
     //delete this;
 }
 
@@ -43,6 +56,25 @@ SendPacketThread::~SendPacketThread()
 YArpPacket* &SendPacketThread::getArpPacket()
 {
     return arppacket;
+}
+
+// 获取被欺骗主机IP
+QString SendPacketThread::getTheCheatHostIp()
+{
+    if(this->type == ARP_PACKET_CHEAT){
+        return QString(cheatHostInfo->ip);
+    }
+}
+
+// 退出线程
+void SendPacketThread::quitThread()
+{
+    qDebug()<< "Quit send Arp Cheat Thread : " << cheatHostInfo->ip;
+    quitFg = true;
+    if(!cheatHostInfo)delete cheatHostInfo;
+    if(this->type == ARP_PACKET_SCAN)delete arppacket;
+    if(this->type == ARP_PACKET_CHEAT)delete arppacket;
+    this->quit();
 }
 
 // 发送ARP扫描包
@@ -84,7 +116,16 @@ void SendPacketThread::sendArpScanPacket()
 // 发送ARP欺骗包
 void SendPacketThread::sendArpCheatPacket()
 {
-
+    while(!quitFg){
+        // 发送
+        if (pcap_sendpacket(handle, arppacket->getData(), ARP_PACKET_LENGTH) == 0){
+            //printf("\nPacketSend succeed\n");
+        } else {
+            printf("PacketSendPacket in getmine Error");
+        }
+        // 每隔多少微秒向指定ip发送ARP包
+        QThread::usleep(200000);
+    }
 }
 
 // 线程运行函数
@@ -100,5 +141,6 @@ void SendPacketThread::run()
     }
     if(type == ARP_PACKET_CHEAT){
         // ...
+        sendArpCheatPacket();        
     }
 }

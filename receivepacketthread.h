@@ -1,3 +1,6 @@
+// ---------------------------------------------
+// 抓包多线程
+// ---------------------------------------------
 #ifndef RECEIVEPACKETTHREAD_H
 #define RECEIVEPACKETTHREAD_H
 

@@ -1,3 +1,6 @@
+// ---------------------------------------------
+// TCP/IP基础结构体和通用函数
+// ---------------------------------------------
 #ifndef TCPIPCOMMON_H
 #define TCPIPCOMMON_H
 
@@ -122,6 +125,8 @@ typedef struct _HostInfo{
     u_char mac[6];
     char ip[16];
     char netmask[16];
+    char getwayIp[16];
+    u_char gatewayMac[6];
 }HostInfo;
 //***********************************************************************************
 //网络常用转换函数声明和说明

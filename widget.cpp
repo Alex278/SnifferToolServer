@@ -16,7 +16,7 @@ Widget::Widget(QWidget *parent) :
 
     mouseAndWinInit();
     tabWidgetPanelInit();
-    tabViewInit();
+    tabWidgetInit();
     ui->pushButtonStartScan->setEnabled(false);
 
     pcap = new PcapCommon();
@@ -25,6 +25,7 @@ Widget::Widget(QWidget *parent) :
     connect(pcap,SIGNAL(scanHostFinishedSig()),this,SLOT(scanHostFinishedSlot()));
     connect(pcap,SIGNAL(scanCurrentIpSig(QString)),this,SLOT(scanCurrentIpSlot(QString)));
     connect(pcap,SIGNAL(scanGetHostInfoSig(QPair<QString,QString>)),this,SLOT(scanGetHostInfoSlot(QPair<QString,QString>)));
+    connect(pcap,SIGNAL(trafficStatisticNetSpeedSig(QString)),this,SLOT(trafficStatisticNetSpeedSlot(QString)));
 
     comboboxAdapterInit();
 }
@@ -51,17 +52,17 @@ void Widget::tabWidgetPanelInit()
     }
 }
 
-// TabView初始化
-void Widget::tabViewInit()
+// TabWidget初始化
+void Widget::tabWidgetInit()
 {
-    ui->tableWidget->setColumnCount(2);
+    ui->tableWidget->setColumnCount(3);
     ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
     ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableWidget->horizontalHeader()->setFixedHeight(35);
     QStringList header;
 //    header <<tr("IP地址")<<tr("机器名")<<tr("上行带宽(KB/S)") << "下行带宽(KB/S)"
 //           << tr("MAC地址") << tr("网卡描述") << tr("日流量");
-    header << tr("IP地址") << tr("MAC地址");
+    header << tr("IP地址") << tr("MAC地址") << tr("主机状态");
     ui->tableWidget->setHorizontalHeaderLabels(header);
     QFont font = ui->tableWidget->horizontalHeader()->font();
     font.setBold(true);
@@ -77,7 +78,11 @@ void Widget::tabViewInit()
     //ui->tableWidget->horizontalHeader()->resizeSection(2,160);
     //ui->tableWidget->horizontalHeader()->resizeSection(3,160);
     ui->tableWidget->setItemDelegate(new NoFocusDelegate());
-    ui->tableWidget->setMouseTracking(true);       
+    ui->tableWidget->setMouseTracking(true);
+    connect(ui->tableWidget, SIGNAL(itemDoubleClicked(QTableWidgetItem *)),
+            this, SLOT(tablItemDoubleClickedSlot(QTableWidgetItem *)));
+    connect(ui->tableWidget,SIGNAL(itemEntered(QTableWidgetItem*)),
+            this,SLOT(itemEnteredHover(QTableWidgetItem *)));
 }
 
 // combobox adapter 初始化
@@ -97,7 +102,7 @@ void Widget::comboboxAdapterInit()
 // 新增一个主机信息到tableWidget
 void Widget::addANewHost(QPair<QString,QString> info)
 {
-    QString infoArray[2] = {info.first,info.second};
+    QString infoArray[3] = {info.first,info.second,tr("正常")};
 
     // 接收数据太快，获取的row有时间上误差，需建立缓冲区来新增主机信息
     ui->tableWidget->update();
@@ -114,6 +119,7 @@ void Widget::addANewHost(QPair<QString,QString> info)
             item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
             item->setFlags(item->flags() ^ Qt::ItemIsEditable);
             if(i == 0)item->setIcon(icon);
+
             ui->tableWidget->setItem(row,i,item);
         }
     }
@@ -132,24 +138,41 @@ void Widget::addANewHost(QPair<QString,QString> info)
             QTableWidgetItem *item = new QTableWidgetItem(infoArray[i]);
             item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
             item->setFlags(item->flags() ^ Qt::ItemIsEditable);
-            if(i == 0)item->setIcon(icon);
+            if(i == 0)item->setIcon(icon);            
+            item->setToolTip(tr("双击行进行ARP Cheat!"));
             ui->tableWidget->setItem(row,i,item);
         }
     }
 }
 
+// 从tablewidge中，通过网关ip获取网关mac
+QString Widget::getGatewayMacFromTabWidget()
+{
+    QString gatewayIp = pcap->getGateway();
+
+     int row = ui->tableWidget->rowCount();
+
+     for(int i = 0;i < row; ++i){
+         QString strText = ui->tableWidget->item(i,0)->text();
+         if(gatewayIp == strText){
+            return ui->tableWidget->item(i,1)->text();
+         }
+     }
+     return "00-00-00-00-00-00";
+}
+
 //-----------------------------------------------------------
-//鼠标和窗口的初始化
+// 鼠标和窗口的初始化
 //-----------------------------------------------------------
 void Widget::mouseAndWinInit()
 {
-    //获取最小化、关闭按钮图标
+    // 获取最小化、关闭按钮图标
     QPixmap minPix  = style()->standardPixmap(QStyle::SP_TitleBarMinButton);
     QPixmap closePix = style()->standardPixmap(QStyle::SP_TitleBarCloseButton);
     QPixmap maxPix = style()->standardPixmap(QStyle::SP_TitleBarMaxButton);
     QPixmap setPix = style()->standardPixmap(QStyle::SP_TitleBarUnshadeButton);
 
-    //设置最小化、关闭按钮图标
+    // 设置最小化、关闭按钮图标
     ui->minButton->setIcon(minPix);    
     ui->maxButton->setIcon(maxPix);
     ui->closeButton->setIcon(closePix);
@@ -159,21 +182,21 @@ void Widget::mouseAndWinInit()
     ui->maxButton->setToolTip(tr("最大化"));
     ui->closeButton->setToolTip(tr("关闭"));
     ui->setButton->setToolTip(tr("查看在线主机信息"));
-    //窗口鼠标拖动相关
-    //设置主窗口无边框
+    // 窗口鼠标拖动相关
+    // 设置主窗口无边框
     this->setWindowFlags(Qt::FramelessWindowHint);
-    //设置在不按鼠标的情况下也触发鼠标移动事件
+    // 设置在不按鼠标的情况下也触发鼠标移动事件
     this->setMouseTracking(true);
-    //鼠标左键按下标记
+    // 鼠标左键按下标记
     isLeftPressed = false;
-    //标记鼠标左击时的位置
+    // 标记鼠标左击时的位置
     curPos = 0;
 }
 
 //-----------------------------------------------------------
-//窗口移动、缩放处理部分
+// 窗口移动、缩放处理部分
 //-----------------------------------------------------------
-//鼠标按下事件
+// 鼠标按下事件
 void Widget::mousePressEvent(QMouseEvent *event)
 {
     if(event->button()==Qt::LeftButton){
@@ -185,30 +208,30 @@ void Widget::mousePressEvent(QMouseEvent *event)
     }
 }
 
-//鼠标释放事件
+// 鼠标释放事件
 void Widget::mouseReleaseEvent(QMouseEvent *event)
 {
     if(isLeftPressed)
         isLeftPressed=false;
-    //恢复鼠标指针形状
+    // 恢复鼠标指针形状
     QApplication::restoreOverrideCursor();
     event->ignore();
 }
 
-//鼠标双击事件
+// 鼠标双击事件
 void Widget::mouseDoubleClickEvent(QMouseEvent *event)
 {
     if(event->button()==Qt::LeftButton){
         if(windowState()!=Qt::WindowFullScreen)
-            //双击窗口全屏
+            // 双击窗口全屏
             setWindowState(Qt::WindowFullScreen);
-        //恢复正常模式
+        // 恢复正常模式
         else setWindowState(Qt::WindowNoState);
     }
     event->ignore();
 }
 
-//鼠标移动时间处理
+// 鼠标移动时间处理
 void Widget::mouseMoveEvent(QMouseEvent *event)
 {
     int poss = countFlag(event->pos(),countRow(event->pos()));
@@ -217,7 +240,7 @@ void Widget::mouseMoveEvent(QMouseEvent *event)
     if(isLeftPressed){
         QPoint ptemp=event->globalPos();
         ptemp=ptemp-pLast;
-        //移动窗口
+        // 移动窗口
         if(curPos == 22){
             ptemp=ptemp+pos();
             move(ptemp);
@@ -237,13 +260,13 @@ void Widget::mouseMoveEvent(QMouseEvent *event)
             }
             setGeometry(wid);
         }
-        //更新位置
+        // 更新位置
         pLast=event->globalPos();
     }
     event->ignore();
 }
 
-//计算鼠标在哪一列和哪一行
+// 计算鼠标在哪一列和哪一行
 int Widget::countFlag(QPoint p,int row)
 {
     if(p.y()< MARGIN)
@@ -254,7 +277,7 @@ int Widget::countFlag(QPoint p,int row)
         return 20+row;
 }
 
-//根据鼠标所在位置改变鼠标指针形状
+// 根据鼠标所在位置改变鼠标指针形状
 void Widget::setCursorType(int flag)
 {
     Qt::CursorShape cursor = Qt::ArrowCursor;
@@ -274,21 +297,21 @@ void Widget::setCursorType(int flag)
         case 22:
         cursor = Qt::ArrowCursor;break;
         default:
-        //恢复鼠标指针形状
+        // 恢复鼠标指针形状
         //QApplication::restoreOverrideCursor();
         break;
     }
     setCursor(cursor);
 }
 
-//计算在哪一列
+// 计算在哪一列
 int Widget::countRow(QPoint p)
 {
     return (p.x()<MARGIN)?1:(p.x()>(this->width()-MARGIN)?3:2);
 }
 
 //-----------------------------------------------------------
-//最大小、关闭按钮槽函数
+// 最大小、关闭按钮槽函数
 //-----------------------------------------------------------
 void Widget::on_minButton_clicked()
 {
@@ -330,6 +353,8 @@ void Widget::on_pushButtonOpenAdapter_clicked()
     pcap->setHostInfo(devName);
     // 3线程获取本机MAC
     pcap->getSelfMac();
+    // 开启流量监控线程
+    pcap->trafficStatistic(devName);
 }
 
 void Widget::getSelfMacFinishedSlot(QString mac)
@@ -386,6 +411,60 @@ void Widget::on_pushButtonStartScan_clicked()
         return ;
     }
 
-    ui->labelStatus->setText("开始扫描...");    
+    ui->labelStatus->setText("开始扫描...");
+
+    // 清除上一次扫描的主机,不能用clear和clearcontent?
+    if(ui->tableWidget->rowCount() != 0){
+        for(int i = 0; i < ui->tableWidget->rowCount();){
+            if(ui->tableWidget->item(i,2)->text() == tr("ARP攻击中")){
+                ++i;
+                continue;
+            }
+            ui->tableWidget->removeRow(i);
+            ui->tableWidget->update();
+        }
+    }
+
     pcap->scanLANHost(ipStart,ipEnd);
+}
+
+void Widget::tablItemDoubleClickedSlot(QTableWidgetItem *item)
+{
+    int row = item->row();
+
+    QTableWidgetItem *tempItem = ui->tableWidget->item(row,2);
+
+    if(tempItem->text() == tr("ARP攻击中")){
+        // 停止攻击
+        ui->tableWidget->item(row,2)->setText(tr("正常"));
+        ui->tableWidget->item(row,2)->setTextColor(QColor(0,0,0));
+        // 停止攻击线程
+        tempItem = ui->tableWidget->item(row,0);
+        QString cheatIp = tempItem->text();
+        pcap->quitArpCheatThread(cheatIp);
+    }
+    else {
+        tempItem = ui->tableWidget->item(row,0);
+        QString cheatIp = tempItem->text();
+        tempItem = ui->tableWidget->item(row,1);
+        QString cheatMac = tempItem->text();
+        tempItem = ui->tableWidget->item(row,2);
+        tempItem->setText(tr("ARP攻击中"));
+        tempItem->setTextColor(QColor(255,0,0));
+        // 开始发送欺骗包
+        QString gatewayMac = getGatewayMacFromTabWidget();
+        pcap->arpCheatHost(cheatIp,cheatMac,gatewayMac);
+    }
+}
+
+void Widget::itemEnteredHover(QTableWidgetItem *item)
+{
+    //qDebug()<< "hover item";
+    item->toolTip();
+}
+
+void Widget::trafficStatisticNetSpeedSlot(QString netSpeed)
+{
+    QString downloadSpeedStr = netSpeed + "KB/S";
+    ui->labelDownload->setText(downloadSpeedStr);
 }
