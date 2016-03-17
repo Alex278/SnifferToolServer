@@ -9,35 +9,47 @@
 #include <stdlib.h>
 #include <winsock2.h>
 
-
-
 typedef unsigned char       u_char;
 typedef unsigned short int  u_short;
 typedef unsigned int        u_int;
 typedef unsigned long       u_long;
 
 
-#define ARP_TYPE            0x0806
-#define IP_TYPE             0x0800          //ipv4
+// Ethernet
+#define ETHERNET_HEAD_LENGTH    14
+#define ARP_TYPE            0x0806          //以太头类型：ARP类型
+#define IP_TYPE             0x0800          //以太头类型：IPV4类型
+#define IPV6_TYPE           0x86dd          //以太头类型，IPV6类型
+
+// ARP Body 28bytes
+// ARP Packet(42bytes) = Ethernet(14bytes) + ARP Body(28bytes)
+#define ARP_BODY_LENGTH         28
+#define ARP_PACKET_LENGTH       42
 #define MPLS_TYPE           0x8847
 #define IPX_TYPE            0x8137
 #define IS_IS_TYPE          0x8000
 #define LACP_TYPE           0x8809
 #define _802_1x_TYPE        0x888E
-#define ARP_HARDWARE        0x0001          //以太网
+#define ARP_HARDWARE        0x0001          //ARP包中：以太网
 #define ARP_REQUEST         0x0001
 #define ARP_REPLY           0x0002
 
+// IP Header 20bytes
+#define IP_HEAD_LENGTH       20
+#define IP_VERSION_4        0x04            //IPV4头，版本4
+#define IP_VERSION_6        0x06            //IPV4头，版本6
 
-#define ETHERNET_HEAD_LENGTH    14
-#define IP_HEAD_LENGTH          20
+#define IP_TCP_TYPE         0x06            //IPV4头中的协议类型：TCP
+#define IP_UDP_TYPE         0x11            //IPV4头中的协议类型：UDP
+#define IP_ICMP_TYPE        0x01            //IPV4头中的协议类型：ICMP
+
+// TCP Header 20bytes
 #define TCP_HEAD_LENGTH         20
-#define ARP_BODY_LENGTH         28
-#define ARP_PACKET_LENGTH       42
 
 
 #define PCAP_SRC_IF_STRING  "rpcap://"      //adapter
 
+// 自定义协议
 #define IP_PACKET           0x10            //IP包
 #define ARP_PACKET_SCAN     0x21            //ARP主机扫描包
 #define ARP_PACKET_CHEAT    0x22            //ARP欺骗包
@@ -66,18 +78,18 @@ typedef struct _IPAddress{
 }IPAddress;
 
 // IPv4 header 20bytes
+// IPv6 header 40bytes,这里只是IPv4的协议头
 typedef struct _IpHeader{
     u_char	VerIhl;         // 版本4 + 首部长度4Version (4 bits) + Internet header length (4 bits)
     u_char	Tos;			// 服务类型Type of service
-    u_short Tlen;			// 总长度Total length
+    u_short Tlen;			// 总长度Total length，包括IP20字节的头
     u_short Identification; // 标识Identification
-    u_short FlagsFo;		// 标志4+片偏移12Flags (3 bits) + Fragment offset (13 bits)
+    u_short FlagsFo;		// 标志(4 bits)+片偏移(12 bits)Flags (3 bits) + Fragment offset (13 bits)
     u_char	Ttl;			// 生存时间Time to live
-    u_char	Proto;			// 协议Protocol
+    u_char	Proto;			// 协议类型：TCP(6)、UDP(17)、ICMP(1)
     u_short Crc;			// 首部校验和Header checksum
-    IPAddress	SrcAddr;	// 源地址Source address
-    IPAddress	DestAddr;	// 目标地址Destination address
-    u_int	OpPad;			// 可变部分：可选字段(长度可变)28+填充部分4Option + Padding
+    u_char SourceIpAdd[4];	// 源地址Source address
+    u_char DestIpAdd[4];	// 目标地址Destination address
 }IPHeader;
 
 // TCP数据包的头部 20 bytes
@@ -103,15 +115,15 @@ typedef struct _UDPHeader{
 
 // 28 bytes ARP request/reply
 typedef struct _ArpHeader {
-    unsigned short HardwareType;          //硬件类型,2字节，定义运行ARP的网络的类型，以太网是类型1
-    unsigned short ProtocolType;          //协议类型,2字节，定义上层协议类型，对于IPV4协议，该字段值为0800
-    unsigned char HardwareAddLen;         //硬件地址长度,8位字段，定义对应物理地址长度，以太网中这个值为6
-    unsigned char ProtocolAddLen;         //协议地址长度,8位字段，定义以字节为单位的逻辑地址长度，对IPV4协议这个值为4
-    unsigned short OperationField;        //操作字段,数据包类型,ARP请求（值为1），或者ARP应答（值为2）
-    unsigned char SourceMacAdd[6];        //源（发送端）mac地址,可变长度字段，对以太网这个字段是6字节长
-    unsigned char SourceIpAdd[4];         //源（发送短）ip地址,发送端协议地址，可变长度字段，对IP协议，这个字段是4字节长
-    unsigned char DestMacAdd[6];          //目的（接收端）mac地址
-    unsigned char DestIpAdd[4];           //目的（接收端）ip地址,注意不能为u_int型，结构体对其
+    u_short HardwareType;          //硬件类型,2字节，定义运行ARP的网络的类型，以太网是类型1
+    u_short ProtocolType;          //协议类型,2字节，定义上层协议类型，对于IPV4协议，该字段值为0800
+    u_char HardwareAddLen;         //硬件地址长度,8位字段，定义对应物理地址长度，以太网中这个值为6
+    u_char ProtocolAddLen;         //协议地址长度,8位字段，定义以字节为单位的逻辑地址长度，对IPV4协议这个值为4
+    u_short OperationField;        //操作字段,数据包类型,ARP请求（值为1），或者ARP应答（值为2）
+    u_char SourceMacAdd[6];        //源（发送端）mac地址,可变长度字段，对以太网这个字段是6字节长
+    u_char SourceIpAdd[4];         //源（发送短）ip地址,发送端协议地址，可变长度字段，对IP协议，这个字段是4字节长
+    u_char DestMacAdd[6];          //目的（接收端）mac地址
+    u_char DestIpAdd[4];           //目的（接收端）ip地址,注意不能为u_int型，结构体对其
 }ArpHeader;
 
 //arp packet = 14 bytes ethernet header + 28 bytes request/reply
@@ -246,7 +258,7 @@ u_int my_inet_addr(const char *ptr)
 {
     int a[4],i=0;
     char str[255] = {0};
-    unsigned long num;
+    u_long num;
 
     strcpy(str,ptr);
     char *p1=str,*p2,*p3;
