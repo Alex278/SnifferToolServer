@@ -19,12 +19,21 @@ PcapCommon::PcapCommon()
 
     //
     hostInfoBuffer = new QQueue< QPair<QString,QString> >;
+    filterDataBuffer = new QQueue< QString >;
     sendThreadAdd = new QMap< QString,SendPacketThread* >;
+
+    // Filter Thread
+    filterThread = new QPair< FilterThread *,bool >;
+    filterThread->second = false;
 
     // 取数据定时器
     getDataFromQQueueTimer = new QTimer();
     connect(getDataFromQQueueTimer, SIGNAL(timeout()), this, SLOT(getDataFromQQueueTimerUpdateSlot()));
     getDataFromQQueueTimer->start(1000);
+    // 取filter缓冲数据定时器
+    getDataFromFilterBufferTimer = new QTimer();
+    connect(getDataFromFilterBufferTimer,SIGNAL(timeout()),this,SLOT(getDataFromFilterBufferSlot()));
+    getDataFromFilterBufferTimer->start(800);
 }
 
 PcapCommon::~PcapCommon()
@@ -451,6 +460,40 @@ void PcapCommon::trafficStatistic(const char *dev)
     trafficStatistic->start();
 }
 
+// 应用过滤规则
+void PcapCommon::applyFilter(const char *dev,QString filter)
+{
+    qDebug()<< "Start applyFilter!";
+    //
+    filterThread->first = new FilterThread(&hostInfo,dev,filter);
+
+    connect(filterThread->first,SIGNAL(filterUpdateDataSig(QString)),this,SLOT(filterUpdateDataSlot(QString)));
+
+    //
+    filterThread->first->start();
+    filterThread->second = true;
+}
+
+// 停止过滤
+void PcapCommon::stopFilter()
+{
+    filterThread->second = false;
+    filterThread->first->quitThread();
+}
+
+// 设置当前过滤线程的状态：停止or运行中
+bool PcapCommon::setFilterThreadStatus(bool status)
+{
+    filterThread->second = status;
+}
+
+// 获取当前过滤线程的状态：停止or运行中
+bool PcapCommon::getFilterThreadStatus()
+{
+    return filterThread->second;
+}
+
+
 u_char PcapCommon::hexStr2UChar(QString hexS)
 {
     QByteArray array = hexS.toUtf8();
@@ -499,7 +542,20 @@ void PcapCommon::getDataFromQQueueTimerUpdateSlot()
     }
 }
 
+void PcapCommon::getDataFromFilterBufferSlot()
+{
+    if(!filterDataBuffer->isEmpty()){
+        QString data = filterDataBuffer->dequeue();
+        emit filterUpdateDataSig(data);
+    }
+}
+
 void PcapCommon::trafficStatisticNetSpeedSlot(QString netSpeed)
 {
     emit trafficStatisticNetSpeedSig(netSpeed);
+}
+
+void PcapCommon::filterUpdateDataSlot(QString data)
+{
+    filterDataBuffer->enqueue(data);
 }

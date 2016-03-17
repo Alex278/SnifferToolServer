@@ -17,10 +17,11 @@ typedef unsigned long       u_long;
 
 // Ethernet
 #define ETHERNET_HEAD_LENGTH    14
-#define ARP_TYPE            0x0806          //以太头类型：ARP类型
-#define IP_TYPE             0x0800          //以太头类型：IPV4类型
-#define IPV6_TYPE           0x86dd          //以太头类型，IPV6类型
+#define ARP_TYPE            0x0806          //以太头类型：ARP类型,地址解析协议
+#define IP_TYPE             0x0800          //以太头类型：IPV4类型,	网际协议版本4
+#define IPV6_TYPE           0x86dd          //以太头类型，IPV6类型,网际协议版本6
 
+//
 // ARP Body 28bytes
 // ARP Packet(42bytes) = Ethernet(14bytes) + ARP Body(28bytes)
 #define ARP_BODY_LENGTH         28
@@ -36,6 +37,7 @@ typedef unsigned long       u_long;
 
 // IP Header 20bytes
 #define IP_HEAD_LENGTH       20
+#define IP_HEAD_WITH_ETHERNET_LENGTH 34
 #define IP_VERSION_4        0x04            //IPV4头，版本4
 #define IP_VERSION_6        0x06            //IPV4头，版本6
 

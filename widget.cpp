@@ -26,6 +26,7 @@ Widget::Widget(QWidget *parent) :
     connect(pcap,SIGNAL(scanCurrentIpSig(QString)),this,SLOT(scanCurrentIpSlot(QString)));
     connect(pcap,SIGNAL(scanGetHostInfoSig(QPair<QString,QString>)),this,SLOT(scanGetHostInfoSlot(QPair<QString,QString>)));
     connect(pcap,SIGNAL(trafficStatisticNetSpeedSig(QString)),this,SLOT(trafficStatisticNetSpeedSlot(QString)));
+    connect(pcap,SIGNAL(filterUpdateDataSig(QString)),this,SLOT(filterUpdateDataSlot(QString)));
 
     comboboxAdapterInit();
 }
@@ -354,7 +355,7 @@ void Widget::on_pushButtonOpenAdapter_clicked()
     // 3线程获取本机MAC
     pcap->getSelfMac();
     // 开启流量监控线程
-    pcap->trafficStatistic(devName);
+    //pcap->trafficStatistic(devName);
 }
 
 void Widget::getSelfMacFinishedSlot(QString mac)
@@ -460,11 +461,40 @@ void Widget::tablItemDoubleClickedSlot(QTableWidgetItem *item)
 void Widget::itemEnteredHover(QTableWidgetItem *item)
 {
     //qDebug()<< "hover item";
-    item->toolTip();
+    //item->toolTip();
 }
 
 void Widget::trafficStatisticNetSpeedSlot(QString netSpeed)
 {
     QString downloadSpeedStr = netSpeed + "KB/S";
     ui->labelDownload->setText(downloadSpeedStr);
+}
+
+void Widget::filterUpdateDataSlot(QString data)
+{
+    int row = ui->listWidget->count();
+    QListWidgetItem *newItem = new QListWidgetItem;
+    newItem->setText(data);
+    ui->listWidget->insertItem(row, newItem);
+}
+
+void Widget::on_pushButtonApplyFilter_clicked()
+{
+    // 过滤关键字包tcp udp arp icmp
+    QString filter = ui->LineEditFilter->text();
+    // 适配器
+    QString devStr = ui->ComboBoxAdapter->currentText();
+    QByteArray devByteArray = devStr.toUtf8();
+    const char *devName = devByteArray.data();
+
+    if(pcap->getFilterThreadStatus())
+        pcap->stopFilter();
+
+    pcap->applyFilter(devName,filter);
+}
+
+void Widget::on_pushButtonStopFilter_clicked()
+{
+    if(pcap->getFilterThreadStatus())
+        pcap->stopFilter();
 }

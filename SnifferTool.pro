@@ -28,7 +28,8 @@ SOURCES += main.cpp\
     tcpipprotocol.cpp \
     sendpacketthread.cpp \
     receivepacketthread.cpp \
-    trafficstatistic.cpp
+    trafficstatistic.cpp \
+    filterthread.cpp
 
 HEADERS  += widget.h \
     tcpipcommon.h \
@@ -38,7 +39,8 @@ HEADERS  += widget.h \
     tcpipprotocol.h \
     sendpacketthread.h \
     receivepacketthread.h \
-    trafficstatistic.h
+    trafficstatistic.h \
+    filterthread.h
 
 FORMS    += widget.ui
 

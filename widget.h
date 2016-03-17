@@ -64,7 +64,10 @@ private slots:
     void on_closeButton_clicked();
     void on_ComboBoxAdapter_currentIndexChanged(const QString &arg1);
     void on_pushButtonOpenAdapter_clicked();
-    void on_pushButtonStartScan_clicked();
+    void on_pushButtonStartScan_clicked();   
+    void on_pushButtonApplyFilter_clicked();
+    void on_pushButtonStopFilter_clicked();
+
 public slots:
     // 获取本机Mac地址完成槽函数处理
     void getSelfMacFinishedSlot(QString mac);
@@ -80,6 +83,8 @@ public slots:
     void itemEnteredHover(QTableWidgetItem *);
     // 获取网速
     void trafficStatisticNetSpeedSlot(QString);
+    // 获取filter发送的数据
+    void filterUpdateDataSlot(QString data);
 };
 
 #endif // WIDGET_H

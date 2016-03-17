@@ -24,8 +24,7 @@ private:
 
 private:
     pcap_t * handle;
-    HostInfo *hostInfo;
-    YArpPacket *arppacket;
+    HostInfo *hostInfo;    
     u_int netmask;
     bpf_program fcode;
     struct timeval oldts;

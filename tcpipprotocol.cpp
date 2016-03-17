@@ -23,6 +23,107 @@ u_char* YEthernetPacket::getData()
     return data;
 }
 
+QString YEthernetPacket::getEtherSrcMacAdd()
+{
+    u_char mac[6] = {0};
+    char macBuf[64] = {0};
+    for (int i = 0; i < 6; i++) {
+        mac[i] = *(unsigned char *) (data + 6 + i);
+    }
+    sprintf(macBuf,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
+    return QString(macBuf);
+}
+
+QString YEthernetPacket::getEtherDestMacAdd()
+{
+    u_char mac[6] = {0};
+    char macBuf[64] = {0};
+    for (int i = 0; i < 6; i++) {
+        mac[i] = *(unsigned char *) (data + 0 + i);
+    }
+    sprintf(macBuf,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
+    return QString(macBuf);
+}
+
+// 只能判断是否是ARP包或者是IP包（TCP/UDP/ICMP包）
+u_short YEthernetPacket::getEtherNetType()
+{
+    u_short etherType = (*(u_short *)(data + 12));
+    return etherType;
+}
+
+void YEthernetPacket::setData(const u_char *data)
+{
+    memcpy(this->data,data,ETHERNET_HEAD_LENGTH);
+}
+
+//***********************************************************************************
+//YIPHeaderPacket Class
+//***********************************************************************************
+YIPHeaderPacket::YIPHeaderPacket()
+{
+
+}
+
+void YIPHeaderPacket::setData(const u_char *pktData)
+{
+    memcpy(data,pktData,IP_HEAD_WITH_ETHERNET_LENGTH);
+}
+
+QString YIPHeaderPacket::getProtocolType()
+{
+    u_char protocolType = (*(u_char *)(data + 23));
+
+    if(protocolType == (IP_TCP_TYPE)){
+        return "TCP";
+    }
+    else if(protocolType == (IP_ICMP_TYPE)){
+        return "ICMP";
+    }
+    else if(protocolType == (IP_UDP_TYPE)){
+        return "UDP";
+    }
+
+    return "ERROR";
+}
+
+
+QString YIPHeaderPacket::getEtherSrcMacAdd()
+{
+    u_char mac[6] = {0};
+    char macBuf[64] = {0};
+    for (int i = 0; i < 6; i++) {
+        mac[i] = *(unsigned char *) (data + 6 + i);
+    }
+    sprintf(macBuf,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
+    return QString(macBuf);
+}
+
+QString YIPHeaderPacket::getEtherDestMacAdd()
+{
+    u_char mac[6] = {0};
+    char macBuf[64] = {0};
+    for (int i = 0; i < 6; i++) {
+        mac[i] = *(unsigned char *) (data + 0 + i);
+    }
+    sprintf(macBuf,"%02x-%02x-%02x-%02x-%02x-%02x",mac[0],mac[1],mac[2],mac[3], mac[4], mac[5]);
+    return QString(macBuf);
+}
+
+QString YIPHeaderPacket::getSourceIpAddStr()
+{
+    u_long ipN = *(u_long *) (data + 26);
+    char *str = my_iptos(ipN);
+    return QString(str);
+}
+
+QString YIPHeaderPacket::getDestIpAddStr()
+{
+    u_long ipN = *(u_long *) (data + 30);
+    char *str = my_iptos(ipN);
+    return QString(str);
+}
+
 //***********************************************************************************
 //ArpPacket Class
 //***********************************************************************************
@@ -129,6 +230,14 @@ u_long YArpPacket::getSourceIpAdd()
     return ipN;
 }
 
+QString YArpPacket::getSourceIpAddStr()
+{
+    u_long ipN = *(u_long *) (data + 28);
+    char *str = my_iptos(ipN);
+    return QString(str);
+}
+
+
 //
 QString YArpPacket::getDestMacAdd()
 {
@@ -141,9 +250,17 @@ QString YArpPacket::getDestMacAdd()
     return QString(macBuf);
 }
 
+QString YArpPacket::getDestIpAddStr()
+{
+    u_long ipN = *(u_long *) (data + 38);
+    char *str = my_iptos(ipN);
+    return QString(str);
+}
+
 //
 u_long YArpPacket::getDestIpAdd()
 {
-
+    u_long ipN = *(u_long *) (data + 38);
+    return ipN;
 }
 

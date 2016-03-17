@@ -20,13 +20,11 @@ TrafficStatistic::TrafficStatistic(HostInfo *hostInfo,const char *dev)
 
     this->hostInfo = new HostInfo();
     memcpy(this->hostInfo,hostInfo,sizeof(HostInfo));
-    //arppacket = new YArpPacket();
 }
 
 TrafficStatistic::~TrafficStatistic()
 {
-    delete hostInfo;
-    //delete arppacket;
+    delete hostInfo;    
 }
 
 bool TrafficStatistic::init()
@@ -45,12 +43,6 @@ bool TrafficStatistic::init()
         // 释放设备列表
         return false;
     }
-    // 将接口设置为统计模式
-//    if(pcap_setmode(handle, MODE_STAT) < 0){
-//        qDebug("Error setting the mode.");
-//        // 释放设备列表
-//        return false;
-//    }
 
     return true;
 }

@@ -14,6 +14,7 @@
 #include <QQueue>
 #include <QTimer>
 #include "sendpacketthread.h"
+#include "filterthread.h"
 
 typedef struct _DEVInfo{
     QString name;
@@ -71,6 +72,15 @@ public:
     void quitArpCheatThread(QString);
     // 统计本机流量
     void trafficStatistic(const char *dev);
+    // 应用过滤规则
+    void applyFilter(const char *dev,QString filter);
+    // 停止过滤
+    void stopFilter();
+    // 设置当前过滤线程的状态：停止or运行中
+    bool setFilterThreadStatus(bool status);
+    // 获取当前过滤线程的状态：停止or运行中
+    bool getFilterThreadStatus();
+
 public slots:
     // 获取本机Mac地址完成槽函数处理
     void getSelfMacFinishedSlot(QString mac);   
@@ -82,22 +92,30 @@ public slots:
     void scanGetHostInfoSlot(QPair<QString,QString>);
     // 定时器溢出槽函数
     void getDataFromQQueueTimerUpdateSlot();
+    // 定时取filter buffer数据槽函数
+    void getDataFromFilterBufferSlot();
     // 获取网速
     void trafficStatisticNetSpeedSlot(QString);
+    // 获取filter发送的数据
+    void filterUpdateDataSlot(QString data);
 signals:
     void getSelfMacFinishedSig(QString mac);
     void scanHostFinishedSig();
     void scanCurrentIpSig(QString);
     void scanGetHostInfoSig(QPair<QString,QString>);
     void trafficStatisticNetSpeedSig(QString);
+    void filterUpdateDataSig(QString data);
 protected:
     pcap_t * handle;
     HostInfo hostInfo;
     pcap_if_t *alldevs;
     QTimer *getDataFromQQueueTimer;
+    QTimer *getDataFromFilterBufferTimer;
 
     QMap< QString,SendPacketThread * > *sendThreadAdd;
     QQueue< QPair<QString,QString> > *hostInfoBuffer;
+    QQueue< QString > *filterDataBuffer;
+    QPair< FilterThread*,bool > *filterThread;
 
 };
 

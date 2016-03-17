@@ -36,13 +36,33 @@ public:
     void setType(u_short type);
     // void getData(&dataStruct);
     u_char* getData();
+    QString getEtherSrcMacAdd(void);
+    QString getEtherDestMacAdd(void);
+    u_short getEtherNetType();
+    void setData(const u_char *data);
     /** 一次设置 **/
     void fillEthernetHeader(u_char* srcMac, u_char* detMac, u_short type);
 private:    
     u_char data[ETHERNET_HEAD_LENGTH];
 };
 
-
+//***********************************************************************************
+//YIPHeaderPacket Class
+//***********************************************************************************
+class YIPHeaderPacket
+{
+public:
+    YIPHeaderPacket();
+    void setData(const u_char *pktData);
+    // TCP/UDP/ICMP
+    QString getProtocolType(void);
+    QString getEtherSrcMacAdd(void);
+    QString getEtherDestMacAdd(void);
+    QString getSourceIpAddStr(void);
+    QString getDestIpAddStr(void);
+private:
+    u_char data[IP_HEAD_WITH_ETHERNET_LENGTH];
+};
 //***********************************************************************************
 //YArpPacket Class
 //***********************************************************************************
@@ -93,8 +113,12 @@ public:
     u_short getOperationField();
     //
     QString getSourceMacAdd();
+    //    
+    QString getSourceIpAddStr();
     //
     u_long getSourceIpAdd();
+    //
+    QString getDestIpAddStr();
     //
     u_long getDestIpAdd();
     //

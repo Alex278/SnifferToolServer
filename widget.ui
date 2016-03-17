@@ -204,6 +204,10 @@ QPushButton:pressed {
  
 QPushButton:flat {
     border: none;
+}
+QPushButton:hover{
+	
+	color: rgb(85, 170, 0);
 }</string>
          </property>
          <property name="text">
@@ -226,7 +230,7 @@ QPushButton:flat {
       </font>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab0">
       <attribute name="title">
@@ -364,6 +368,10 @@ QPushButton:pressed {
  
 QPushButton:flat {
     border: none;
+}
+QPushButton:hover{
+	
+	color: rgb(85, 170, 0);
 }</string>
              </property>
              <property name="text">
@@ -663,7 +671,7 @@ QPushButton:flat {
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="FilterLineEdit_3">
+              <widget class="QLineEdit" name="LineEditFilter">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -686,7 +694,7 @@ QPushButton:flat {
 }</string>
                </property>
                <property name="text">
-                <string>TCP UDP ARP</string>
+                <string>TCP UDP ARP ICMP</string>
                </property>
               </widget>
              </item>
@@ -711,7 +719,7 @@ QPushButton:flat {
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_14">
              <item>
-              <widget class="QPushButton" name="pushButton_5">
+              <widget class="QPushButton" name="pushButtonApplyFilter">
                <property name="minimumSize">
                 <size>
                  <width>82</width>
@@ -739,6 +747,10 @@ QPushButton:pressed {
  
 QPushButton:flat {
     border: none;
+}
+QPushButton:hover{
+	
+	color: rgb(85, 170, 0);
 }</string>
                </property>
                <property name="text">
@@ -763,7 +775,7 @@ QPushButton:flat {
               </spacer>
              </item>
              <item>
-              <widget class="QPushButton" name="pushButton_6">
+              <widget class="QPushButton" name="pushButtonStopFilter">
                <property name="minimumSize">
                 <size>
                  <width>82</width>
@@ -791,6 +803,11 @@ QPushButton:pressed {
  
 QPushButton:flat {
     border: none;
+}
+
+QPushButton:hover{
+	
+	color: rgb(255, 0, 0);
 }</string>
                </property>
                <property name="text">
@@ -819,7 +836,7 @@ QPushButton:flat {
           </spacer>
          </item>
          <item>
-          <widget class="QListWidget" name="listWidget_2">
+          <widget class="QListWidget" name="listWidget">
            <property name="font">
             <font>
              <family>宋体</family>
