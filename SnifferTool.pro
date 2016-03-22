@@ -48,7 +48,8 @@ SOURCES += main.cpp\
     getallhostname.cpp \
     libping.cpp \
     syn_scan.cpp \
-    portservicemap.cpp
+    portservicemap.cpp \
+    aboutdialog.cpp
 
 HEADERS  += widget.h \
     tcpipcommon.h \
@@ -63,9 +64,11 @@ HEADERS  += widget.h \
     getallhostname.h \
     libping.h \
     syn_scan.h \
-    portservicemap.h
+    portservicemap.h \
+    aboutdialog.h
 
-FORMS    += widget.ui
+FORMS    += widget.ui \
+    aboutdialog.ui
 
 DISTFILES += \
     readme.txt

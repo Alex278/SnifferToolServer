@@ -9,6 +9,7 @@
 #include <QMenu>
 #include <QTableWidgetItem>
 #include "pcapcommon.h"
+#include "aboutdialog.h"
 
 // 鼠标相关
 #define MARGIN 5
@@ -35,7 +36,7 @@ private:
     Ui::Widget *ui;
     QQueue< QPair<QString,QString> >hostnameBuffer;
     QTimer *getHostnameTimer;
-
+    AboutDialog *aboutDialog;
 private:
 // TabWidget面板相关
     void tabWidgetPanelInit();
@@ -75,6 +76,8 @@ private slots:
     void on_pushButtonApplyPing_clicked();
 
     void on_pushButtonPortScan_clicked();
+
+    void on_setButton_clicked();
 
 public slots:
     // 获取本机Mac地址完成槽函数处理

@@ -10,7 +10,8 @@ Widget::Widget(QWidget *parent) :
     ui(new Ui::Widget)
 {
     ui->setupUi(this);
-
+    aboutDialog = new AboutDialog(this);
+    aboutDialog->setModal(true);
     // 注册自定义结构参数
     qRegisterMetaType< QPair<QString,QString> >("QPair<QString,QString>");
 
@@ -206,7 +207,7 @@ void Widget::mouseAndWinInit()
     ui->minButton->setToolTip(tr("最小化"));
     ui->maxButton->setToolTip(tr("最大化"));
     ui->closeButton->setToolTip(tr("关闭"));
-    ui->setButton->setToolTip(tr("查看在线主机信息"));
+    ui->setButton->setToolTip(tr("关于"));
     // 窗口鼠标拖动相关
     // 设置主窗口无边框
     this->setWindowFlags(Qt::FramelessWindowHint);
@@ -639,4 +640,9 @@ void Widget::portScanIsFinishedSlot()
 void Widget::portScanRecvUpdataSlot(QString msg)
 {
     ui->listWidgetPortScan->addItem(msg);
+}
+
+void Widget::on_setButton_clicked()
+{
+    aboutDialog->show();
 }
