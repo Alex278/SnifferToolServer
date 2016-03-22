@@ -1,4 +1,4 @@
-aw # SnifferToolServer
+# SnifferToolServer
 # 网络管理工具
 &emsp;&emsp;The Sniffer Tool based on WinPcap and QT5.
 
@@ -26,7 +26,7 @@ aw # SnifferToolServer
 
 # 功能一：主机信息扫描
 
-![](./images/hostscan.png)
+![](./images/hostScan.png)
 
 # 功能二：局域网主机扫描
 
