@@ -1,22 +1,21 @@
 // ---------------------------------------------
-// 过滤抓包单线程
+// 过滤抓包（ICMP 指定IP包）单线程
 // ---------------------------------------------
-#ifndef FILTERTHREAD_H
-#define FILTERTHREAD_H
+#ifndef MYPINGTHREAD_H
+#define MYPINGTHREAD_H
 
-#include <QByteArray>
 #include <QThread>
 #include "tcpipcommon.h"
 #include "tcpipprotocol.h"
 #include "pcap.h"
 
-class FilterThread : public QThread
+class MyPingThread : public QThread
 {
     Q_OBJECT
 
 public:
-    FilterThread();
-    FilterThread(HostInfo *hostInfo,const char*dev,QString filter);
+    MyPingThread();
+    MyPingThread(HostInfo *hostInfo,const char*dev,QString filter);
     void quitThread();
 private:
     bool init();
@@ -32,8 +31,7 @@ private:
     YArpPacket *arppacket;
     YIPHeaderPacket *eippacket;
 signals:
-    void filterUpdateDataSig(QString data);
-    void filterStatusSig(int num,QString msg);
+    void pingUpdateDataSig(QString data);
 };
 
-#endif // FILTERTHREAD_H
+#endif // MYPINGTHREAD_H

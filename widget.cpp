@@ -3,7 +3,7 @@
 #include <QMouseEvent>
 #include <QDebug>
 #include "NoFocusDelegate.h"
-
+#include "getallhostname.h"
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
@@ -20,13 +20,23 @@ Widget::Widget(QWidget *parent) :
     ui->pushButtonStartScan->setEnabled(false);
 
     pcap = new PcapCommon();
+    pcap->winSocketInit();
 
     connect(pcap,SIGNAL(getSelfMacFinishedSig(QString)),this,SLOT(getSelfMacFinishedSlot(QString)));
     connect(pcap,SIGNAL(scanHostFinishedSig()),this,SLOT(scanHostFinishedSlot()));
     connect(pcap,SIGNAL(scanCurrentIpSig(QString)),this,SLOT(scanCurrentIpSlot(QString)));
-    connect(pcap,SIGNAL(scanGetHostInfoSig(QPair<QString,QString>)),this,SLOT(scanGetHostInfoSlot(QPair<QString,QString>)));
+    connect(pcap,SIGNAL(scanGetHostInfoSig(QPair< QString,QString >)),this,SLOT(scanGetHostInfoSlot(QPair< QString,QString >)));
     connect(pcap,SIGNAL(trafficStatisticNetSpeedSig(QString)),this,SLOT(trafficStatisticNetSpeedSlot(QString)));
     connect(pcap,SIGNAL(filterUpdateDataSig(QString)),this,SLOT(filterUpdateDataSlot(QString)));
+    connect(pcap,SIGNAL(filterStatusSig(int,QString)),this,SLOT(filterStatusSlot(int,QString)));
+    connect(pcap,SIGNAL(pingUpdateEchoSig(QString)),this,SLOT(pingUpdateEchoSlot(QString)));
+    connect(pcap,SIGNAL(portScanIsFinishedSig()),this,SLOT(portScanIsFinishedSlot()));
+    connect(pcap,SIGNAL(portScanRecvUpdataSig(QString)),this,SLOT(portScanRecvUpdataSlot(QString)));
+
+    // getHostnameTimer init
+    getHostnameTimer = new QTimer();
+    connect(getHostnameTimer,SIGNAL(timeout()),this,SLOT(getHostnameFromQQueueBufferSlot()));
+    getHostnameTimer->start(100);
 
     comboboxAdapterInit();
 }
@@ -56,14 +66,14 @@ void Widget::tabWidgetPanelInit()
 // TabWidget初始化
 void Widget::tabWidgetInit()
 {
-    ui->tableWidget->setColumnCount(3);
+    ui->tableWidget->setColumnCount(4);
     ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
     ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableWidget->horizontalHeader()->setFixedHeight(35);
     QStringList header;
 //    header <<tr("IP地址")<<tr("机器名")<<tr("上行带宽(KB/S)") << "下行带宽(KB/S)"
 //           << tr("MAC地址") << tr("网卡描述") << tr("日流量");
-    header << tr("IP地址") << tr("MAC地址") << tr("主机状态");
+    header << tr("IP地址") << tr("主机名") << tr("MAC地址") << tr("主机状态");
     ui->tableWidget->setHorizontalHeaderLabels(header);
     QFont font = ui->tableWidget->horizontalHeader()->font();
     font.setBold(true);
@@ -101,9 +111,10 @@ void Widget::comboboxAdapterInit()
 }
 
 // 新增一个主机信息到tableWidget
-void Widget::addANewHost(QPair<QString,QString> info)
+void Widget::addANewHost(QPair< QString ,QString > info)
 {
-    QString infoArray[3] = {info.first,info.second,tr("正常")};
+    // ip , hostname , mac , status
+    QString infoArray[4] = {info.first,"------",info.second,tr("正常")};
 
     // 接收数据太快，获取的row有时间上误差，需建立缓冲区来新增主机信息
     ui->tableWidget->update();
@@ -146,6 +157,19 @@ void Widget::addANewHost(QPair<QString,QString> info)
     }
 }
 
+// 通过指定ip更新tablewidget中的主机名
+void Widget::updateHostname(QString ip,QString hostname)
+{
+    for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
+        QTableWidgetItem *item =  ui->tableWidget->item(i,0);
+        // 二次扫描的过程中不需要更新已经获取了主机名的主机
+        if((item->text() == ip) && (ui->tableWidget->item(i,3)->text() != tr("ARP攻击中"))){
+            ui->tableWidget->item(i,1)->setText(hostname);
+            break;
+        }
+    }
+}
+
 // 从tablewidge中，通过网关ip获取网关mac
 QString Widget::getGatewayMacFromTabWidget()
 {
@@ -156,7 +180,7 @@ QString Widget::getGatewayMacFromTabWidget()
      for(int i = 0;i < row; ++i){
          QString strText = ui->tableWidget->item(i,0)->text();
          if(gatewayIp == strText){
-            return ui->tableWidget->item(i,1)->text();
+            return ui->tableWidget->item(i,2)->text();
          }
      }
      return "00-00-00-00-00-00";
@@ -329,7 +353,8 @@ void Widget::on_maxButton_clicked()
 
 void Widget::on_closeButton_clicked()
 {
-    this->close();
+    //this->close();
+    exit(0);
 }
 
 //-----------------------------------------------------------
@@ -355,7 +380,7 @@ void Widget::on_pushButtonOpenAdapter_clicked()
     // 3线程获取本机MAC
     pcap->getSelfMac();
     // 开启流量监控线程
-    //pcap->trafficStatistic(devName);
+    pcap->trafficStatistic(devName);
 }
 
 void Widget::getSelfMacFinishedSlot(QString mac)
@@ -364,6 +389,7 @@ void Widget::getSelfMacFinishedSlot(QString mac)
     ui->labelStatus->setText(tr("获取本机信息完毕"));
     ui->lineEditIPStart->setText(pcap->getHostIp());
     ui->lineEditIPEnd->setText(pcap->getHostIp());
+    pcap->setPcapStatus(true);
 
     ui->labelHostIP->setText(pcap->getHostIp());
     ui->labelHostNetmask->setText(pcap->getHostNetmask());
@@ -375,6 +401,24 @@ void Widget::scanHostFinishedSlot()
     ui->labelStatus->setText(tr("扫描主机结束"));
     int hostNum = ui->tableWidget->rowCount();
     ui->labelHostNum->setText(QString::number(hostNum));
+    // 获取gateway MAC
+    QString gatewayMac = getGatewayMacFromTabWidget();
+    ui->labelGatewayMac->setText(gatewayMac);
+    pcap->setGatewayMac(gatewayMac);
+
+    // 在这里获取个ip的主机名，因为WSAStartup()，一个个去获取，每个耗费几秒钟
+    // ，但是一次性获取总共只需要耗费几秒钟这个问题，所以，这里获取完ip和mac信息后，
+    // 再一次性获取所有的主机名，但是在UI上获取数据不同步了，还没找到好的解决办法。
+    QVector<QString> allHostIp;
+    for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
+        QTableWidgetItem *item =  ui->tableWidget->item(i,0);
+        allHostIp.append(item->text());
+    }
+
+    GetAllHostName * getallhostnameThread = new GetAllHostName(allHostIp);
+    connect(getallhostnameThread,SIGNAL(getHostnameByIpStrUpdateSig(QPair<QString,QString>)),this,SLOT(getHostnameByIpStrUpdateSlot(QPair<QString,QString>)));
+
+    getallhostnameThread->start();
 }
 
 void Widget::scanCurrentIpSlot(QString cuttentIp)
@@ -382,7 +426,7 @@ void Widget::scanCurrentIpSlot(QString cuttentIp)
     ui->labelStatus->setText(cuttentIp);
 }
 
-void Widget::scanGetHostInfoSlot(QPair<QString,QString> info)
+void Widget::scanGetHostInfoSlot(QPair< QString,QString >info)
 {
     // 添加进table中，并处理重复ip
     // qDebug () << info.first << " " << info.second;
@@ -417,7 +461,7 @@ void Widget::on_pushButtonStartScan_clicked()
     // 清除上一次扫描的主机,不能用clear和clearcontent?
     if(ui->tableWidget->rowCount() != 0){
         for(int i = 0; i < ui->tableWidget->rowCount();){
-            if(ui->tableWidget->item(i,2)->text() == tr("ARP攻击中")){
+            if(ui->tableWidget->item(i,3)->text() == tr("ARP攻击中")){
                 ++i;
                 continue;
             }
@@ -433,12 +477,12 @@ void Widget::tablItemDoubleClickedSlot(QTableWidgetItem *item)
 {
     int row = item->row();
 
-    QTableWidgetItem *tempItem = ui->tableWidget->item(row,2);
+    QTableWidgetItem *tempItem = ui->tableWidget->item(row,3);
 
     if(tempItem->text() == tr("ARP攻击中")){
         // 停止攻击
-        ui->tableWidget->item(row,2)->setText(tr("正常"));
-        ui->tableWidget->item(row,2)->setTextColor(QColor(0,0,0));
+        ui->tableWidget->item(row,3)->setText(tr("正常"));
+        ui->tableWidget->item(row,3)->setTextColor(QColor(0,0,0));
         // 停止攻击线程
         tempItem = ui->tableWidget->item(row,0);
         QString cheatIp = tempItem->text();
@@ -447,9 +491,9 @@ void Widget::tablItemDoubleClickedSlot(QTableWidgetItem *item)
     else {
         tempItem = ui->tableWidget->item(row,0);
         QString cheatIp = tempItem->text();
-        tempItem = ui->tableWidget->item(row,1);
-        QString cheatMac = tempItem->text();
         tempItem = ui->tableWidget->item(row,2);
+        QString cheatMac = tempItem->text();
+        tempItem = ui->tableWidget->item(row,3);
         tempItem->setText(tr("ARP攻击中"));
         tempItem->setTextColor(QColor(255,0,0));
         // 开始发送欺骗包
@@ -478,8 +522,20 @@ void Widget::filterUpdateDataSlot(QString data)
     ui->listWidget->insertItem(row, newItem);
 }
 
+void Widget::filterStatusSlot(int num,QString msg)
+{
+    //qDebug()<< num << " " << msg;
+    if(num < 0)pcap->stopFilter();
+    ui->labelStatus->setText(msg);
+}
+
 void Widget::on_pushButtonApplyFilter_clicked()
 {
+    if(!pcap->getPcapStatus()){
+        ui->labelStatus->setText(tr("适配器未准备就绪"));
+        return ;
+    }
+
     // 过滤关键字包tcp udp arp icmp
     QString filter = ui->LineEditFilter->text();
     // 适配器
@@ -487,14 +543,100 @@ void Widget::on_pushButtonApplyFilter_clicked()
     QByteArray devByteArray = devStr.toUtf8();
     const char *devName = devByteArray.data();
 
-    if(pcap->getFilterThreadStatus())
+    if(pcap->getFilterThreadStatus()){
         pcap->stopFilter();
 
-    pcap->applyFilter(devName,filter);
+    }
+    // 清空列表
+    if(ui->listWidget->count()){
+        ui->listWidget->clear();
+    }
+    pcap->applyFilter(devName,filter);    
 }
 
 void Widget::on_pushButtonStopFilter_clicked()
-{
-    if(pcap->getFilterThreadStatus())
+{   
+    if(pcap->getFilterThreadStatus()){
         pcap->stopFilter();
+        // 清空列表
+        // ui->listWidget->clear();
+    }
+}
+
+void Widget::on_pushButtonApplyPing_clicked()
+{
+    QString pingIp = ui->LineEditPing->text();
+    QString pingNum = ui->lineEditPingNum->text();
+    if(ui->listWidgetPing->count()){
+        ui->listWidgetPing->clear();
+    }
+    pcap->applyPing(pingIp,pingNum.toInt());
+}
+
+// 获取主机名线程更新数据槽函数
+void Widget::getHostnameByIpStrUpdateSlot(QPair<QString,QString> info)
+{
+    hostnameBuffer.enqueue(info);
+}
+
+// getHostnameTimer 定时取主机名缓冲区队列中数据
+void Widget::getHostnameFromQQueueBufferSlot()
+{
+    if(!hostnameBuffer.isEmpty()){
+        QPair<QString,QString> info = hostnameBuffer.dequeue();
+        updateHostname(info.first,info.second);
+    }
+}
+
+// ping 更新echo
+void Widget::pingUpdateEchoSlot(QString echo)
+{
+    ui->listWidgetPing->addItem(echo);
+}
+
+void Widget::on_pushButtonPortScan_clicked()
+{
+    if(!pcap->getPcapStatus()){
+        ui->labelStatus->setText(tr("适配器未准备就绪"));
+        return ;
+    }
+
+    QString scanIp = ui->LineEditPortScanIp->text();
+    QString scanMac;
+    int row = ui->tableWidget->rowCount();
+
+    for(int i = 0;i < row; ++i){
+        QString strText = ui->tableWidget->item(i,0)->text();
+        if(scanIp == strText){
+           scanMac = ui->tableWidget->item(i,2)->text();
+        }
+    }
+
+    QString scanStartPort = ui->lineEditStartPort->text();
+    QString scanEndPort = ui->lineEditEndPort->text();
+
+    QString devStr = ui->ComboBoxAdapter->currentText();
+    QByteArray devByteArray = devStr.toUtf8();
+    const char *devName = devByteArray.data();
+
+    // 清除上一次的结果
+    if(ui->listWidgetPortScan->count() > 0){
+        ui->listWidgetPortScan->clear();
+    }
+
+    pcap->applyPortScan(devName,scanIp,scanMac,scanStartPort.toUShort(),scanEndPort.toUShort());
+    //pcap->applyPortScan(scanIp,scanMac,scanStartPort.toUShort(),scanEndPort.toUShort());
+    ui->labelStatus->setText(tr("开始端口扫描"));
+}
+
+// 端口扫描结束
+void Widget::portScanIsFinishedSlot()
+{
+    ui->labelStatus->setText(tr("端口扫描结束"));
+}
+
+// 端口扫描获取SYN-ACK更新
+void Widget::portScanRecvUpdataSlot(QString msg)
+{
+    ui->listWidgetPortScan->addItem(msg);
 }

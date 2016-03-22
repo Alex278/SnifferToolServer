@@ -56,13 +56,33 @@ public:
     void setData(const u_char *pktData);
     // TCP/UDP/ICMP
     QString getProtocolType(void);
-    QString getEtherSrcMacAdd(void);
-    QString getEtherDestMacAdd(void);
     QString getSourceIpAddStr(void);
     QString getDestIpAddStr(void);
 private:
-    u_char data[IP_HEAD_WITH_ETHERNET_LENGTH];
+    u_char data[IP_HEAD_LENGTH];
 };
+
+//***********************************************************************************
+//YICMPHeaderPacket Class Ping实现，无需data,只需要ICMP头即可，关键是校验和生成
+//***********************************************************************************
+class YICMPHeaderPacket
+{
+public:
+    YICMPHeaderPacket();
+    void setType(u_char type);
+    void setCode(u_char code);
+    void setIdent(u_short ident);
+    void setSeq(u_short seq);
+    // 不包括校验和
+    void fillICMPHeader(u_char type,u_char code,u_short ident,u_short seq);
+    // 计算校验和
+    u_short calcCheckSum(u_short *icmpHeader,int headerLen);
+    //
+
+private:
+    u_char data[ICMP_HEAD_LENGTH];
+};
+
 //***********************************************************************************
 //YArpPacket Class
 //***********************************************************************************
@@ -143,9 +163,29 @@ class YIPPacket
 //***********************************************************************************
 //YTcpPacket Class
 //***********************************************************************************
+
+#define HOST_PORT  0xc522        // 本机端口（随便搞个）：
+
 class YTcpPacket
 {
+public:
+    YTcpPacket();
+    YTcpPacket(u_char *srcMac,u_char *destMac,char *srcIp,char *destIp,u_short port);
 
+private:
+    YEthernetPacket *ethernetHeader;
+    YIPHeaderPacket *ipHeader;
+
+    u_char data[TCP_PACKET_LENGTH];
+private:
+    u_short calcCheckNum(u_short* buffer, int size);
+public:
+    void setData(const u_char *pktData);
+    u_char* getData(void);
+    u_char getFlag();
+    u_short getSrcPort();
+    QString getDestIpAddStr(void);
+    void setScanPort(u_short port);
 };
 
 //***********************************************************************************

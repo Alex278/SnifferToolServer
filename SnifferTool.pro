@@ -11,14 +11,29 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = SnifferTool
 TEMPLATE = app
 
+
+#-------------------------------------------------
+
+QMAKE_CFLAGS += -std=gnu11  -D_GNU_SOURCE
+QMAKE_CXXFLAGS += -std=gnu++11
+
 #-------------------------------------------------
 # WinPcap
-INCLUDEPATH += E:\WinPcapLib\Include
-LIBS += -LE:/WinPcapLib/Lib/   -lPacket -lwpcap
+INCLUDEPATH += D:\WinPcap\Include
+LIBS += -LD:/WinPcap/Lib/ -lpacket -lwpcap
+
 # WinSock
 LIBS += -lws2_32
 LIBS += -liphlpapi
 #-------------------------------------------------
+# libnet
+#LIBS += -L$$PWD/libnet/Lib/ -lnet
+#INCLUDEPATH +=$$PWD/libnet/Include
+#DEPENDPATH +=$$PWD/libnet/Include
+LIBS += -LD:/WinPcap/libnet/Lib/ -lnet
+INCLUDEPATH += D:\WinPcap\libnet\Include
+#-------------------------------------------------
+
 
 SOURCES += main.cpp\
         widget.cpp \
@@ -29,7 +44,11 @@ SOURCES += main.cpp\
     sendpacketthread.cpp \
     receivepacketthread.cpp \
     trafficstatistic.cpp \
-    filterthread.cpp
+    filterthread.cpp \
+    getallhostname.cpp \
+    libping.cpp \
+    syn_scan.cpp \
+    portservicemap.cpp
 
 HEADERS  += widget.h \
     tcpipcommon.h \
@@ -40,7 +59,11 @@ HEADERS  += widget.h \
     sendpacketthread.h \
     receivepacketthread.h \
     trafficstatistic.h \
-    filterthread.h
+    filterthread.h \
+    getallhostname.h \
+    libping.h \
+    syn_scan.h \
+    portservicemap.h
 
 FORMS    += widget.ui
 

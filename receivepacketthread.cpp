@@ -25,6 +25,28 @@ ReceivePacketThread::ReceivePacketThread(pcap_t *handle,HostInfo *hostInfo,u_sho
     if(type == ARP_PACKET_CHEAT){
 
     }
+    if(type == TCP_PACKET){
+        etherpacket = new YEthernetPacket();
+        ipheaderpacket = new YIPHeaderPacket();
+        tcppacket = new YTcpPacket();
+    }
+}
+
+ReceivePacketThread::ReceivePacketThread(pcap_t *handle,HostInfo *hostInfo,u_short type,QString scanIp)
+{
+    scanIsFinished = false;
+    this->handle = handle;
+    this->hostInfo = new HostInfo();
+    memcpy(this->hostInfo,hostInfo,sizeof(HostInfo));
+    this->type = type;
+    this->scanIp = scanIp;
+
+    if(type == TCP_PACKET){
+        portServiceMap = new PortServiceMap();
+        etherpacket = new YEthernetPacket();
+        ipheaderpacket = new YIPHeaderPacket();
+        tcppacket = new YTcpPacket();
+    }
 }
 
 void ReceivePacketThread::recvArpScanPacket()
@@ -53,6 +75,41 @@ void ReceivePacketThread::recvArpScanPacket()
     }
 }
 
+void ReceivePacketThread::recvTCPSYNACKPortScanPacket()
+{
+    pcap_t *adhandle = this->handle;
+    int res;
+    struct pcap_pkthdr * pktHeader;
+    const u_char * pktData;
+    while (!scanIsFinished) {
+        if ((res = pcap_next_ex(adhandle, &pktHeader, &pktData)) >= 0) {
+            etherpacket->setData(pktData);
+            if ((etherpacket->getEtherNetType() == my_htons(IP_TYPE))){
+                ipheaderpacket->setData(pktData);
+                if((ipheaderpacket->getProtocolType() == "TCP")){
+                    tcppacket->setData(pktData);
+                    if((ipheaderpacket->getDestIpAddStr() == QString(hostInfo->ip)) &&
+                        (ipheaderpacket->getSourceIpAddStr() == scanIp)){
+                        // 端口开放
+                        if(tcppacket->getFlag() == (TCP_SYN_ACK)){
+                            //qDebug() << my_htons(tcppacket->getSrcPort()) << " 端口已开放";
+
+                            QString service = portServiceMap->getService(my_htons(tcppacket->getSrcPort()));
+                            QString msg = QString("端口:%1  协议:tcp  服务:%2").arg(QString::number(my_htons(tcppacket->getSrcPort())),service);
+                            //qDebug()<< msg;
+                            emit portScanRecvUpdataSig(msg);
+                        }
+                        // 端口未开放
+                        else if(tcppacket->getFlag() == (TCP_RST_ACK)){
+                            //qDebug() << my_htons(tcppacket->getSrcPort()) << " 端口未开放";
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void ReceivePacketThread::run()
 {
     if(type == ARP_PACKET_SCAN){
@@ -68,11 +125,22 @@ void ReceivePacketThread::run()
     if(type == ARP_PACKET_CHEAT){
 
     }
+    if(type == TCP_PACKET){
+        recvTCPSYNACKPortScanPacket();
+        //
+        delete hostInfo;
+        //
+        delete etherpacket;
+        delete ipheaderpacket;
+        delete tcppacket;
+        qDebug() << "Recv PortScan is quit";
+        this->quit();
+    }
 }
 
 void ReceivePacketThread::scanHostFinishedSlot()
 {
-    //qDebug() << "Scan host is finished slot";
+    qDebug() << "Recv is finished slot";
     scanIsFinished = true;
 }
 

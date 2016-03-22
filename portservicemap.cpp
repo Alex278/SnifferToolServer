@@ -1,0 +1,67 @@
+#include "portservicemap.h"
+
+
+PortServiceMap::PortServiceMap()
+{
+    portService = new QMap<unsigned short,QString>;
+    portService->insert(1,"tcpmux");
+    portService->insert(3,"compressnet");
+    portService->insert(7,"echo");
+    portService->insert(9,"discard");
+    portService->insert(13,"daytime");
+    portService->insert(17,"qotd");
+    portService->insert(19,"chargen");
+    portService->insert(20,"ftp-data");
+    portService->insert(21,"ftp");
+    portService->insert(22,"ssh");
+    portService->insert(23,"telnet");
+    portService->insert(24,"priv-mail");
+    portService->insert(25,"smtp");
+    portService->insert(26,"rsftp");
+    portService->insert(33,"dsp");
+    portService->insert(37,"time");
+    portService->insert(42,"nameserver");
+    portService->insert(43,"whois");
+    portService->insert(49,"tacacs");
+    portService->insert(53,"domain");
+    portService->insert(70,"gopher");
+    portService->insert(80,"http");
+    portService->insert(81,"hosts2-ns");
+    portService->insert(82,"xfer");
+    portService->insert(83,"mit-ml-dev");
+    portService->insert(84,"ctf");
+    portService->insert(85,"mit-ml-dev");
+    portService->insert(88,"kerberos-sec");
+    portService->insert(89,"su-mit-tg");
+    portService->insert(90,"dnsix");
+    portService->insert(99,"metagram");
+    portService->insert(100,"newacct");
+    portService->insert(106,"pop3pw");
+    portService->insert(109,"pop2");
+    portService->insert(110,"pop3");
+    portService->insert(111,"rpcbind");
+    portService->insert(113,"ident");
+    portService->insert(119,"nntp");
+    portService->insert(125,"locus-map");
+    portService->insert(135,"msrpc");
+    portService->insert(139,"netbios-ssn");
+    portService->insert(143,"imap");
+    portService->insert(144,"news");
+    portService->insert(146,"iso-tp0");
+    portService->insert(161,"snmp");
+    portService->insert(163,"cmip-man");
+    portService->insert(179,"bgp");
+
+    portService->insert(443,"https");
+    portService->insert(445,"microsoft-ds");
+    portService->insert(902,"issrealsecure");
+    portService->insert(912,"iss-realsucure");
+    portService->insert(1025,"NFS-or-IIS");
+    portService->insert(1030,"iad1");
+    portService->insert(1049,"td-postman");
+    portService->insert(1060,"polestar");
+    portService->insert(1521,"oracle");
+    portService->insert(3306,"mysql");
+    portService->insert(5560,"isqlplus");
+    portService->insert(8009,"ajp13");
+}

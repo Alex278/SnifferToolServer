@@ -6,7 +6,9 @@
 #include "getmacthread.h"
 #include "receivepacketthread.h"
 #include "trafficstatistic.h"
+#include "libping.h"
 #include <QDebug>
+
 
 
 PcapCommon::PcapCommon()
@@ -15,32 +17,56 @@ PcapCommon::PcapCommon()
     qRegisterMetaType< QPair<QString,QString> >("QPair<QString,QString>");
 
     handle = NULL;
+    pcapStatus = false;
     memset(hostInfo.mac,0x00,6);
-
+    //
+    //filterThread
     //
     hostInfoBuffer = new QQueue< QPair<QString,QString> >;
     filterDataBuffer = new QQueue< QString >;
     sendThreadAdd = new QMap< QString,SendPacketThread* >;
 
-    // Filter Thread
-    filterThread = new QPair< FilterThread *,bool >;
-    filterThread->second = false;
-
     // 取数据定时器
     getDataFromQQueueTimer = new QTimer();
     connect(getDataFromQQueueTimer, SIGNAL(timeout()), this, SLOT(getDataFromQQueueTimerUpdateSlot()));
-    getDataFromQQueueTimer->start(1000);
+    getDataFromQQueueTimer->start(400);
     // 取filter缓冲数据定时器
     getDataFromFilterBufferTimer = new QTimer();
     connect(getDataFromFilterBufferTimer,SIGNAL(timeout()),this,SLOT(getDataFromFilterBufferSlot()));
-    getDataFromFilterBufferTimer->start(800);
+    getDataFromFilterBufferTimer->start(300);
 }
 
 PcapCommon::~PcapCommon()
 {
     delete getDataFromQQueueTimer;
     pcap_freealldevs(alldevs);
+    WSACleanup();
     if(handle != NULL)pcap_close(handle);
+}
+
+
+// Windows Socket 初始化
+void PcapCommon::winSocketInit()
+{
+    WSADATA wsaData;
+    // 调用Windows Sockets DLL
+    if (WSAStartup(MAKEWORD(2,1),&wsaData)){
+        qDebug() << tr("Winsock无法初始化!");
+        WSACleanup();
+        return ;
+    }
+}
+
+// 设置Pcap的状态
+void PcapCommon::setPcapStatus(bool status)
+{
+    pcapStatus = status;
+}
+
+// 获取Pcap的状态
+bool PcapCommon::getPcapStatus()
+{
+    return pcapStatus;
 }
 
 // 扫描本机所有的适配器，并获取每个适配器的信息
@@ -219,16 +245,8 @@ QString PcapCommon::getHostIp()
 // 获取Host IP(通过winsock2)
 QString PcapCommon::getHostIpByWinSock()
 {
-    char hostname[256] = {0};
-    WSADATA wsaData;
+    char hostname[256] = {0};    
     char ip[128] = {0};
-
-    // 调用Windows Sockets DLL
-    if (WSAStartup(MAKEWORD(2,1),&wsaData)){
-        printf("Winsock无法初始化!\n");
-        WSACleanup();
-        return 0;
-    }
 
     if(gethostname(hostname, sizeof(hostname)) == 0){
         // 结构
@@ -336,6 +354,16 @@ QString PcapCommon::getGateway()
     return "0.0.0.0";
 }
 
+// 设置网关
+void PcapCommon::setGatewayMac(QString gatewayMac)
+{
+    // 转化网关MAC
+    QStringList list2 = gatewayMac.split("-");
+    for(int i = 0; i < list2.length(); ++i){
+        hostInfo.gatewayMac[i] = hexStr2UChar(list2.at(i));
+    }
+}
+
 // 获取Host Mac
 QString PcapCommon::getHostMac()
 {
@@ -366,6 +394,7 @@ bool PcapCommon::ipStart2EndIsValid(QString ipStart,QString ipEnd)
     return ipen > ipsn ? true : false;
 }
 
+
 void PcapCommon::scanLANHost(QString ipStart,QString ipEnd)
 {
     // 可New多个线程出来，防止抓包线程漏包
@@ -376,7 +405,8 @@ void PcapCommon::scanLANHost(QString ipStart,QString ipEnd)
     u_char adestMac[6] = {0x00,0x00,0x00,0x00,0x00,0x00};
     sendScan->getArpPacket()->getEthernetPacket().fillEthernetHeader(hostInfo.mac,edestMac,ARP_TYPE);
     // 填充arp 头
-    sendScan->getArpPacket()->fillArpPacket(ARP_HARDWARE,IP_TYPE,ARP_REQUEST,hostInfo.mac,hostInfo.ip,adestMac,"");
+    char iptemp[] = "";
+    sendScan->getArpPacket()->fillArpPacket(ARP_HARDWARE,IP_TYPE,ARP_REQUEST,hostInfo.mac,hostInfo.ip,adestMac,iptemp);
     // 设置待发送的ARP包完毕
     sendScan->getArpPacket()->setData();    
 
@@ -428,11 +458,20 @@ void PcapCommon::arpCheatHost(QString cheatIp,QString cheatMac,QString gatewayMa
         sendThreadAdd->insert(sendCheat->getTheCheatHostIp(),sendCheat);
     }
 
-    sendCheat->getArpPacket()->getEthernetPacket().fillEthernetHeader(hostInfo.mac,hostInfo.gatewayMac,ARP_TYPE);
+    // 设定ip和mac，并开始攻击
+    // 主机欺骗
+    sendCheat->getArpPacket()->getEthernetPacket().fillEthernetHeader(hostInfo.mac,cheatHostInfo.gatewayMac,ARP_TYPE);
     sendCheat->getArpPacket()->fillArpPacket(ARP_HARDWARE,IP_TYPE,ARP_REQUEST,hostInfo.mac,cheatHostInfo.ip,hostInfo.gatewayMac,hostInfo.getwayIp);
     sendCheat->getArpPacket()->setData();
-
     sendCheat->start();
+
+    // 网关欺骗，不能有效，以太头源mac为广播地址
+//    u_char broadcastmac[] = {0xff,0xff,0xff,0xff,0xff,0xff};
+//    SendPacketThread *sendCheat1 = new SendPacketThread(handle,&hostInfo,ARP_PACKET_CHEAT,&cheatHostInfo);
+//    sendCheat1->getArpPacket()->getEthernetPacket().fillEthernetHeader(broadcastmac,cheatHostInfo.mac,ARP_TYPE);
+//    sendCheat1->getArpPacket()->fillArpPacket(ARP_HARDWARE,IP_TYPE,ARP_REPLY,hostInfo.mac,cheatHostInfo.getwayIp,cheatHostInfo.mac,cheatHostInfo.ip);
+//    sendCheat1->getArpPacket()->setData();
+//    sendCheat1->start();
 }
 
 // 退出ARP Cheat Thread
@@ -463,36 +502,74 @@ void PcapCommon::trafficStatistic(const char *dev)
 // 应用过滤规则
 void PcapCommon::applyFilter(const char *dev,QString filter)
 {
-    qDebug()<< "Start applyFilter!";
+    qDebug()<< "Start applyFilter!";    
     //
-    filterThread->first = new FilterThread(&hostInfo,dev,filter);
+    filterThread = new FilterThread(&hostInfo,dev,filter);
 
-    connect(filterThread->first,SIGNAL(filterUpdateDataSig(QString)),this,SLOT(filterUpdateDataSlot(QString)));
-
-    //
-    filterThread->first->start();
-    filterThread->second = true;
+    connect(filterThread,SIGNAL(filterUpdateDataSig(QString)),this,SLOT(filterUpdateDataSlot(QString)));
+    connect(filterThread,SIGNAL(filterStatusSig(int,QString)),this,SLOT(filterStatusSlot(int,QString)));
+    //    
+    filterThread->start();
 }
 
 // 停止过滤
 void PcapCommon::stopFilter()
 {
-    filterThread->second = false;
-    filterThread->first->quitThread();
-}
-
-// 设置当前过滤线程的状态：停止or运行中
-bool PcapCommon::setFilterThreadStatus(bool status)
-{
-    filterThread->second = status;
+    filterDataBuffer->clear();    
+    if(filterThread->isRunning())
+        filterThread->quitThread();
 }
 
 // 获取当前过滤线程的状态：停止or运行中
 bool PcapCommon::getFilterThreadStatus()
 {
-    return filterThread->second;
+    if(!filterThread)return false;
+    if(filterThread->isRunning())
+        return true;
+    return false;
 }
 
+// Ping Ip
+void PcapCommon::applyPing(QString ip,int num)
+{
+    qDebug()<< "Apply ping ip = " << ip << " " << num;
+    //前面设置IP后面设置ping的次数
+    PingProc *ping_proc=new PingProc(ip,num);
+    //连接ping_Proc的信号EchoReport就可以得到ping的结果
+    //使用C++11的lambda表达式做槽
+    QObject::connect(ping_proc,&PingProc::EchoReport,[=](QString rep)
+    {
+        //qDebug("%s",qPrintable(rep));
+        emit pingUpdateEchoSig(rep);
+    });
+
+    ping_proc->run();
+}
+
+// 端口扫描:
+void PcapCommon::applyPortScan(const char *device,QString ip,QString scanMac,u_short startPort,u_short endPort)
+{
+//    qDebug() << ip << " " << startPort << " " << endPort;
+    // 转化目标MAC
+    HostInfo targetHost;
+    QStringList list1 = scanMac.split("-");
+    for(int i = 0; i < list1.length(); ++i){
+        targetHost.mac[i] = hexStr2UChar(list1.at(i));
+    }
+    // 转换目标IP
+    QByteArray byteArray = ip.toUtf8();
+    char * cstring = byteArray.data();
+    memcpy(targetHost.ip,cstring,ip.length());
+    //
+    SendPacketThread *sendPortScan = new SendPacketThread(device,&hostInfo,TCP_PACKET,&targetHost,startPort,endPort);
+    //SendPacketThread *sendPortScan = new SendPacketThread(handle,&hostInfo,TCP_PACKET,&targetHost,startPort,endPort);
+    ReceivePacketThread *recvPortScan = new ReceivePacketThread(handle,&hostInfo,TCP_PACKET,ip);
+    connect(sendPortScan,SIGNAL(finished()),recvPortScan,SLOT(scanHostFinishedSlot()));
+    connect(sendPortScan,SIGNAL(finished()),this,SLOT(portScanIsFinishedSlot()));
+    connect(recvPortScan,SIGNAL(portScanRecvUpdataSig(QString)),this,SLOT(portScanRecvUpdataSlot(QString)));
+    sendPortScan->start();
+    recvPortScan->start();
+}
 
 u_char PcapCommon::hexStr2UChar(QString hexS)
 {
@@ -536,6 +613,7 @@ void PcapCommon::scanGetHostInfoSlot(QPair<QString,QString> info)
 void PcapCommon::getDataFromQQueueTimerUpdateSlot()
 {
     QPair<QString ,QString> info;
+    // ip , hostname , mac
     if(!hostInfoBuffer->isEmpty()){
         info = hostInfoBuffer->dequeue();
         emit scanGetHostInfoSig(info);
@@ -558,4 +636,21 @@ void PcapCommon::trafficStatisticNetSpeedSlot(QString netSpeed)
 void PcapCommon::filterUpdateDataSlot(QString data)
 {
     filterDataBuffer->enqueue(data);
+}
+
+void PcapCommon::filterStatusSlot(int num,QString msg)
+{
+    emit filterStatusSig(num,msg);
+}
+
+// 端口扫描结束
+void PcapCommon::portScanIsFinishedSlot()
+{
+    emit portScanIsFinishedSig();
+}
+
+// 端口扫描获取SYN-ACK更新
+void PcapCommon::portScanRecvUpdataSlot(QString msg)
+{
+    emit portScanRecvUpdataSig(msg);
 }

@@ -45,10 +45,20 @@ typedef unsigned long       u_long;
 #define IP_UDP_TYPE         0x11            //IPV4头中的协议类型：UDP
 #define IP_ICMP_TYPE        0x01            //IPV4头中的协议类型：ICMP
 
+// ICMP
+#define ICMP_HEAD_LENGTH    8
+#define ICMP_ECHO_REPLAY    0x00
+#define ICMP_ECHO_REQUEST   0x08
+
 // TCP Header 20bytes
 #define TCP_HEAD_LENGTH         20
+#define TCP_PACKET_LENGTH       54          // ethernetheader(14) + ipheader(20) + tcpheader(20)
+#define TCP_SYN             0x6002          // 握手：SYN
+#define TCP_SYN_ACK         0x12            // 握手应答：SYN_ACK
+#define TCP_RST_ACK         0x14            // 拒绝应答：RST_ACK
+#define TCP_RST             0x5004          // 拒绝链接：RST
 
-
+// PCAP
 #define PCAP_SRC_IF_STRING  "rpcap://"      //adapter
 
 // 自定义协议
@@ -94,17 +104,38 @@ typedef struct _IpHeader{
     u_char DestIpAdd[4];	// 目标地址Destination address
 }IPHeader;
 
+// ICMP
+typedef struct _ICMPHeader{
+    u_char type;            // reply:0 ,request:8
+    u_char code;            // 代码
+    u_short checkSum;       // 校验和
+    u_short ident;          //
+    u_short seq;            // 序列号
+    //u_char data[32];      //可变长度
+}ICMPHeader;
+
 // TCP数据包的头部 20 bytes
 typedef struct _TCPPacketHeader {
     u_short	SrcPort;		//源端口
     u_short	DestPort;		//目的端口
     u_int	Seq;			//序列号
     u_int	Ack;			//确认序列号
-    u_short	Lenres;			//数据偏移4+保留区6+URG+ACK+PSH+RST+SYN+FIN
-    u_short	Win;			//窗口
+    //u_short	Lenres;			//数据偏移4+保留区6+URG+ACK+PSH+RST+SYN+FIN,可以将u_short分为两个u_char
+    u_char len;             //（数据偏移）TCP首部长度，仅4bit，后4bit必须为零
+    u_char flags;           //前2bit为零，后面各位是URG,ACK,PSH,RST,SYN,FIN
+    u_short	Win;			//窗口大小
     u_short	Sum;			//校验和
     u_short	Urp;			//紧急指针
 }TCPPacketHeader;
+
+// 12字节的TCP伪首部，参与校验和计算
+typedef struct _PsedoTCPHead{
+    u_char  source_addr[4];
+    u_char  dest_addr[4];
+    u_char  zero;
+    u_char  protocol;
+    u_short seg_len;
+}PsedoTCPHead;
 
 // UDP header
 typedef struct _UDPHeader{
